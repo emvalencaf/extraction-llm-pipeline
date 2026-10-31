@@ -9,6 +9,11 @@ heading when `development` is released to `master`.
 
 ### Added
 
+- Walking skeleton (#28): hexagonal package `src/invoice_extraction/` with the
+  Extraction Schema (Decimal/ISO normalization in code), the `ExtractInvoice`
+  pipeline use case, in-process `FakeGemini`, pytest seam-1 tests, import-linter
+  layer contracts, and `tests` and `architecture` CI jobs.
+
 - Split Manifest (seed 42, 60/20/20 stratified by line-item count) and its generator
   `scripts/make_split_manifest.py`.
 - Live Gemini Placeholder preservation test and its write-up in
