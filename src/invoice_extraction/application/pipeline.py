@@ -241,8 +241,8 @@ class ExtractInvoice:
                 self._record_call(state, request, attempt, "ok", started, reply)
                 return {"raw": reply.data, "call_ok": True, "model": setting.name}
         if state["tier"] == "escalation":
-            # the quality model is a bonus: its outage ends the job as a validation failure
-            return {"call_ok": False, "result": self._schema_invalid(state)}
+            # an outage of the last-resort model is an infrastructure failure: let the queue retry
+            raise ModelUnavailableError("escalation model is unavailable")
         return {"call_ok": False}
 
     def _record_call(

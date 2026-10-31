@@ -202,14 +202,12 @@ def test_exhausted_repair_and_escalation_ends_as_failed_validation():
     assert model.models_called() == [PRIMARY] * 3 + [ESCALATION] * 3
 
 
-def test_unavailable_escalation_model_ends_as_failed_validation():
+def test_unavailable_escalation_model_is_an_infrastructure_failure():
     model = FakeGemini(reply=invalid())
     model.inject(ESCALATION, RATE_LIMITED)
 
-    result = run(model)
-
-    assert result.status is JobStatus.FAILED_VALIDATION
-    assert result.reason is TerminalReason.SCHEMA_INVALID
+    with pytest.raises(ModelUnavailableError):
+        run(model)
 
 
 def test_no_langgraph_checkpointer_is_used():
