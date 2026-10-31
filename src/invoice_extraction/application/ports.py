@@ -15,3 +15,23 @@ class ExtractionModel(Protocol):
 
 class PdfUnreadableError(Exception):
     """The input is not a PDF the pipeline can read."""
+
+
+class JobRepository(Protocol):
+    def create(self, job: dict[str, Any]) -> None: ...
+
+    def get(self, job_id: str) -> dict[str, Any] | None: ...
+
+    def update(self, job_id: str, **fields: Any) -> None: ...
+
+
+class BlobStore(Protocol):
+    def presign_put(self, key: str) -> str:
+        """URL the client PUTs the PDF to."""
+
+    def get(self, key: str) -> bytes:
+        """Return the object body; raise BlobNotFoundError if absent."""
+
+
+class BlobNotFoundError(Exception):
+    """The uploaded object is not in the store."""

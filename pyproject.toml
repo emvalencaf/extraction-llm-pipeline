@@ -3,9 +3,13 @@ name = "invoice-extraction"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
+    "boto3>=1.43.123",
+    "fastapi>=0.162.0",
     "google-genai>=2.34.0",
+    "httpx>=0.28.1",
     "pydantic>=2.14.2",
     "pypdf>=6.21.4",
+    "uvicorn>=0.54.0",
 ]
 
 [build-system]
@@ -56,5 +60,6 @@ known-first-party = ["invoice_extraction", "support"]
 dev = [
     "import-linter>=2.15",
     "kaggle>=2.2.5",
+    "moto[dynamodb,s3,sqs]>=5.2.5",
     "pytest>=9.2.0",
 ]
