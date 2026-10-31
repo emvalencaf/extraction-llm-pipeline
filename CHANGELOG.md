@@ -9,6 +9,18 @@ heading when `development` is released to `master`.
 
 ### Added
 
+- Async job lifecycle (#33): the full state machine (`awaiting_upload`, `queued`,
+  `processing`, `succeeded`, `failed_validation`, `failed`, `expired`) enforced by
+  conditional DynamoDB writes against a domain transition table; optional
+  `Idempotency-Key` on `POST /jobs` (200 with the first job on replay); duplicate
+  deliveries are skipped; uploads that never arrive turn `expired`. Queue behavior:
+  batch 1, 5 receives before the DLQ, 2 workers, visibility delay doubling per receive
+  on `ModelUnavailableError`, job marked `failed` on the last receive, worker-side
+  size check before download, and `make redrive` (native `StartMessageMoveTask`) that
+  re-runs jobs which failed by retries exhausted. The API shim emulates the API key
+  and usage plan with JSON 403/429 bodies; fake-gemini gains `PUT /control/fail`.
+  `make stack-lifecycle` runs the poison, redrive, idempotency and 403/429 scenarios.
+
 - Walking skeleton (#28): hexagonal package `src/invoice_extraction/` with the
   Extraction Schema (Decimal/ISO normalization in code), the `ExtractInvoice`
   pipeline use case, in-process `FakeGemini`, pytest seam-1 tests, import-linter

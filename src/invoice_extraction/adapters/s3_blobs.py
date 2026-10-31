@@ -21,6 +21,14 @@ class S3BlobStore:
             ExpiresIn=self._expires,
         )
 
+    def size(self, key: str) -> int:
+        try:
+            return self._client.head_object(Bucket=self._bucket, Key=key)["ContentLength"]
+        except ClientError as error:
+            if error.response["Error"]["Code"] in {"NoSuchKey", "404"}:
+                raise BlobNotFoundError(key) from error
+            raise
+
     def get(self, key: str) -> bytes:
         try:
             return self._client.get_object(Bucket=self._bucket, Key=key)["Body"].read()

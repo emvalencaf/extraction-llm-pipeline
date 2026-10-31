@@ -5,6 +5,7 @@
 """Happy path against the running local stack: create job, presigned PUT, fetch result."""
 
 import json
+import os
 import sys
 import time
 import urllib.request
@@ -14,6 +15,8 @@ API = "http://localhost:8080"
 
 def call(url: str, method: str = "GET", data: bytes | None = None) -> bytes:
     headers = {"Content-Type": "application/pdf"} if data else {}
+    if url.startswith(API):
+        headers["x-api-key"] = os.environ.get("API_KEY", "local-dev-key")
     request = urllib.request.Request(url, data=data, headers=headers, method=method)
     with urllib.request.urlopen(request, timeout=30) as response:
         return response.read()

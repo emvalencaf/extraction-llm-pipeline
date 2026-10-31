@@ -21,7 +21,9 @@ def make_api_handler(service: JobService) -> Handler:
     def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         method = event.get("httpMethod")
         if method == "POST" and event.get("path") == "/jobs":
-            return _response(201, service.create())
+            headers = {k.lower(): v for k, v in (event.get("headers") or {}).items()}
+            job = service.create(headers.get("idempotency-key") or None)
+            return _response(200 if job.pop("replayed", False) else 201, job)
         job_id = (event.get("pathParameters") or {}).get("job_id")
         if method == "GET" and job_id:
             job = service.get(job_id)

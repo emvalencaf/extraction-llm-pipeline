@@ -84,7 +84,29 @@ class JobRepository(Protocol):
 
     def get(self, job_id: str) -> dict[str, Any] | None: ...
 
-    def update(self, job_id: str, **fields: Any) -> None: ...
+    def transition(
+        self,
+        job_id: str,
+        to: Any,
+        *,
+        expected: Any,
+        requires: dict[str, Any] | None = None,
+        **fields: Any,
+    ) -> None:
+        """Move the job to status `to` only if its status is in `expected` (and every
+        `requires` attribute matches); otherwise raise IllegalTransitionError."""
+
+    def claim_idempotency_key(self, key: str, job_id: str) -> str:
+        """Bind `key` to `job_id` once. Return the job id bound to the key (the given one
+        when this call won, the earlier one when the key was already used)."""
+
+    def discard(self, job_id: str) -> None:
+        """Delete a job created but never handed out."""
+
+
+class QueueDelayer(Protocol):
+    def delay(self, receipt_handle: str, seconds: int) -> None:
+        """Hide the message from the queue for `seconds` before its next delivery."""
 
 
 class BlobStore(Protocol):
@@ -93,6 +115,9 @@ class BlobStore(Protocol):
 
     def get(self, key: str) -> bytes:
         """Return the object body; raise BlobNotFoundError if absent."""
+
+    def size(self, key: str) -> int:
+        """Return the object size in bytes; raise BlobNotFoundError if absent."""
 
 
 class BlobNotFoundError(Exception):

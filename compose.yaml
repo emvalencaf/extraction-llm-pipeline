@@ -15,6 +15,11 @@ x-aws: &aws
 x-lambda-env: &lambda-env
   <<: *aws
   JOBS_TABLE: jobs
+  AWS_ENDPOINT_URL_SQS: http://elasticmq:9324
+  # Queue behavior with compressed timings (production: 5 receives, 30 s base, 900 s cap).
+  MAX_RECEIVES: "5"
+  RETRY_BASE_SECONDS: "2"
+  RETRY_CAP_SECONDS: "8"
   BUCKET: invoices
   FAKE_GEMINI_URL: http://fake-gemini:8000
   # Presigned PUT URLs are used from the host, not from inside the network.
@@ -55,7 +60,9 @@ services:
   init:
     <<: *tools
     depends_on: [moto, dynamodb, elasticmq]
-    environment: *aws
+    environment:
+      <<: *aws
+      VISIBILITY_TIMEOUT: "15"  # production: >= 6x the Lambda timeout
     # The emulators need a moment to listen; retry until init succeeds.
     command: sh -c "until python -m invoice_extraction.entrypoints.init_resources; do sleep 2; done"
     restart: "no"
@@ -85,5 +92,12 @@ services:
     depends_on: [api-lambda]
     environment:
       API_LAMBDA_URL: http://api-lambda:8080/2015-03-31/functions/function/invocations
+      # Usage plan emulation: single key, 1 req/s burst 2, 100 POST/day (GET throttled apart).
+      API_KEY: ${API_KEY:-local-dev-key}
+      RATE_PER_SECOND: ${RATE_PER_SECOND:-1}
+      BURST: ${BURST:-2}
+      DAILY_POST_LIMIT: ${DAILY_POST_LIMIT:-100}
+      GET_RATE_PER_SECOND: "20"
+      GET_BURST: "40"
     command: uvicorn --factory invoice_extraction.entrypoints.api_shim:app --host 0.0.0.0 --port 8080
     ports: ["8080:8080"]

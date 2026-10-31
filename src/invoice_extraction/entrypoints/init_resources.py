@@ -18,7 +18,7 @@ RESOURCES = {
     "jobs_dlq": "jobs-dlq",
     "s3_events_queue": "s3-events",
 }
-MAX_RECEIVES = 3
+MAX_RECEIVES = 5  # receives before the DLQ; the worker marks the job failed on the 5th
 
 
 def check_against_terraform(root: Path = Path("infra/terraform")) -> str:
@@ -53,7 +53,7 @@ def init(s3, dynamodb, jobs_sqs, events_sqs) -> None:
     jobs_sqs.create_queue(
         QueueName=names["jobs_queue"],
         Attributes={
-            "VisibilityTimeout": "60",
+            "VisibilityTimeout": os.environ.get("VISIBILITY_TIMEOUT", "60"),
             "RedrivePolicy": json.dumps(
                 {"deadLetterTargetArn": dlq_arn, "maxReceiveCount": MAX_RECEIVES}
             ),

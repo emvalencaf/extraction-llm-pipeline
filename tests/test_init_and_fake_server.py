@@ -51,3 +51,15 @@ def test_init_is_idempotent_and_routes_uploads_to_the_events_queue(monkeypatch):
 
 def test_terraform_check_is_skipped_until_terraform_exists(tmp_path):
     assert "skipped" in check_against_terraform(tmp_path / "missing")
+
+
+def test_fake_gemini_server_can_be_told_to_fail():
+    client = TestClient(create_app())
+    call = {"text": "t", "schema": {}}
+
+    client.put("/control/fail", json={"status": 503})
+    failing = client.post("/extract", json=call).status_code
+    client.delete("/control/fail")
+    recovered = client.post("/extract", json=call).status_code
+
+    assert (failing, recovered) == (503, 200)
