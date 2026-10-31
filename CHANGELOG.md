@@ -44,6 +44,21 @@ heading when `development` is released to `master`.
   timings are read from `LLM_MAX_ATTEMPTS`, `LLM_BACKOFF_BASE_SECONDS` and
   `LLM_BACKOFF_CAP_SECONDS`; compose compresses them with the queue and upload TTL timings.
   The demo prints scenarios 1, 2, 4 and 5 as a timeline.
+- Terraform core and image packaging (#36): `infra/` with a `bootstrap/` stack (S3 state
+  bucket) and modules `storage`, `queue` (jobs queue, DLQ with 5 receives, S3 notification
+  policy), `jobs-table`, `registry` (ECR), `secrets` (SSM SecureString for the Gemini key),
+  `worker` (SQS trigger: batch 1, concurrency 2, partial batch responses) and `api` (REST API,
+  API key, usage plan 1 req/s burst 2, GET throttled apart at 20/40, 15-minute presigned
+  PUT). One `prod` environment in us-east-1, S3-native state locking, `force_destroy`
+  everywhere, committed provider lock files. `scripts/deploy-infra.sh` (`bootstrap`, `up`
+  ECR-first, `plan`, `down`). `init_resources.check_against_terraform` now checks
+  `infra/` against the local resource names. The runtime reads the Gemini key from the SSM
+  parameter named by `GEMINI_API_KEY_SSM_PARAMETER`. Measured on the shared image
+  (local docker, 2026-10-31): 947 MB on disk, about 357 MB compressed; cold start about
+  6.1 s for the worker (init 2.2 s plus 5.6 s building the service with Presidio and
+  spaCy), 10 ms warm. Known gap: an API Gateway quota is plan-wide, so `daily_quota`
+  (default 1000) counts GET polling as well; the 100 POST/day limit is enforced only by
+  the local shim.
 - Async job lifecycle (#33): the full state machine (`awaiting_upload`, `queued`,
   `processing`, `succeeded`, `failed_validation`, `failed`, `expired`) enforced by
   conditional DynamoDB writes against a domain transition table; optional

@@ -190,6 +190,28 @@ after quota exhaustion and the Lambda timeout on the last receive.
 
 The Lambda image installs its dependencies from `uv.lock`.
 
+### Infrastructure (AWS)
+
+`infra/` holds the Terraform for one `prod` environment in `us-east-1`: `bootstrap/`
+(state bucket, local state, run once), `modules/{storage,queue,jobs-table,registry,secrets,worker,api}`
+and the root files that compose them. State uses S3-native locking (`use_lockfile`, no
+DynamoDB table). Everything has `force_destroy`/`force_delete`, so anyone can create and
+fully destroy it. `infra/locals.tf` holds the logical names the local `init` also creates;
+`check_against_terraform` (run by `init` and by a test) fails when they drift.
+
+```bash
+export BUCKET_SUFFIX=<your-account-id>      # makes the S3 names yours
+scripts/deploy-infra.sh bootstrap           # state bucket + infra/backend.hcl, once
+scripts/deploy-infra.sh up                  # ECR, build and push the image, everything else
+aws ssm put-parameter --overwrite --type SecureString \
+  --name "$(terraform -chdir=infra output -raw gemini_parameter_name)" --value <gemini-key>
+scripts/deploy-infra.sh down                # destroy the stack, then the state bucket
+```
+
+The API key is created by Terraform (read it with `aws apigateway get-api-key --api-key
+<api_key_id> --include-value`) and rotated with
+`terraform -chdir=infra apply -replace=module.api.aws_api_gateway_api_key.this ...`.
+
 ### Status line budget
 
 The status line shows spend against a USD budget when you pay per token (no

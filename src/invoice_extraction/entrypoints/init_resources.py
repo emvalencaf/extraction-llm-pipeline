@@ -1,8 +1,8 @@
 """Create the local stack's AWS resources with boto3 (S3, DynamoDB, queues, notification).
 
 Idempotent. Resource names come from `RESOURCES` and are checked against the Terraform
-definitions by `check_against_terraform`, which is a stub until the Terraform ticket lands
-`infra/terraform`.
+definitions by `check_against_terraform`: `infra/locals.tf` holds the same logical names, and
+Terraform prefixes them (`invoice-extraction-prod-<name>`).
 """
 
 import json
@@ -21,12 +21,18 @@ RESOURCES = {
 MAX_RECEIVES = 5  # receives before the DLQ; the worker marks the job failed on the 5th
 
 
-def check_against_terraform(root: Path = Path("infra/terraform")) -> str:
+# Only the local stack has it: on AWS, S3 notifies the jobs queue directly (no relay needed).
+LOCAL_ONLY = frozenset({"s3_events_queue"})
+
+
+def check_against_terraform(root: Path = Path("infra")) -> str:
     """Return a status line; raise if a local resource name is missing from the .tf files."""
     if not root.is_dir():
-        return "terraform check skipped: no infra/terraform yet (lands with the Terraform ticket)"
+        return f"terraform check skipped: no {root} directory"
     text = "\n".join(path.read_text() for path in root.rglob("*.tf"))
-    missing = [f"{k}={v}" for k, v in RESOURCES.items() if f'"{v}"' not in text]
+    missing = [
+        f"{k}={v}" for k, v in RESOURCES.items() if k not in LOCAL_ONLY and f'"{v}"' not in text
+    ]
     if missing:
         raise SystemExit(f"resources missing from Terraform: {', '.join(missing)}")
     return "terraform check passed"
