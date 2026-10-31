@@ -1,7 +1,7 @@
 # `docker compose` (v2 plugin) when present, else the standalone docker-compose.
 COMPOSE := $(shell docker compose version >/dev/null 2>&1 && echo "docker compose" || echo docker-compose)
 
-.PHONY: stack-up stack-down stack-logs stack-smoke stack-lifecycle redrive test
+.PHONY: gate gate-baseline stack-up stack-down stack-logs stack-smoke stack-lifecycle redrive test
 
 stack-up: ## Start the token-free local stack in the background (API on :8080)
 	$(COMPOSE) up --build -d
@@ -21,6 +21,12 @@ stack-lifecycle: ## Poison message, redrive, idempotency and 403/429 against a r
 redrive: ## Replay the DLQ with native SQS redrive (stack must be up)
 	$(COMPOSE) run --rm --no-deps init \
 		python -m invoice_extraction.entrypoints.redrive
+
+gate: ## Regression gate on the Test Set (live Gemini; needs GATE_GEMINI_API_KEY)
+	uv run scripts/regression_gate.py
+
+gate-baseline: ## Accept the current run as the new data/baseline.json (review the diff in the PR)
+	uv run scripts/regression_gate.py --update-baseline
 
 test: ## Unit and in-process seam tests
 	uv run pytest

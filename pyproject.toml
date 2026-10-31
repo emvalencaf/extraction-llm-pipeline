@@ -62,6 +62,7 @@ known-first-party = ["invoice_extraction", "support"]
 dev = [
     "import-linter>=2.15",
     "kaggle>=2.2.5",
+    "llm-assayer-eval>=0.1.1",
     "moto[dynamodb,s3,sqs]>=5.2.5",
     "pytest>=9.2.0",
 ]
