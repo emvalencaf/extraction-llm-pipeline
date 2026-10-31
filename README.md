@@ -212,6 +212,11 @@ The API key is created by Terraform (read it with `aws apigateway get-api-key --
 <api_key_id> --include-value`) and rotated with
 `terraform -chdir=infra apply -replace=module.api.aws_api_gateway_api_key.this ...`.
 
+The shared Lambda image measures 947 MB on disk (about 357 MB compressed). Cold start is
+about 6.1 s for the first invoke under the Lambda runtime interface emulator and 10-80 ms
+warm. These are local docker numbers, not measured on Lambda; details in
+[infra/README.md](infra/README.md).
+
 ### Status line budget
 
 The status line shows spend against a USD budget when you pay per token (no

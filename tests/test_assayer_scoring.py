@@ -48,3 +48,10 @@ def test_no_extraction_scores_zero_but_stays_conclusive(expected):
     outcome = score_document("51109301", expected, None)
     assert outcome.conclusive and not outcome.all_correct
     assert set(outcome.field_scores.values()) == {0.0}
+
+
+def test_an_answer_that_is_no_extraction_is_a_conclusive_miss(expected):
+    outcome = score_document("51109301", expected, {"invoice_no": "51109301"})
+    assert outcome.conclusive and not outcome.all_correct
+    assert outcome.note == "invalid extraction"
+    assert set(outcome.field_scores.values()) == {0.0}

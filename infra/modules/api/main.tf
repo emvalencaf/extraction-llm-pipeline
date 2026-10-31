@@ -244,14 +244,29 @@ resource "aws_api_gateway_api_key" "this" {
 resource "aws_api_gateway_usage_plan" "this" {
   name = var.name
 
+  # The plan-level throttle caps every method, so a stricter POST limit there would also cap GET.
+  # POST and GET get their own throttle per method; the plan-level one is only the ceiling
+  # (the larger of the two), which keeps each method limit effective.
   api_stages {
     api_id = aws_api_gateway_rest_api.this.id
     stage  = aws_api_gateway_stage.this.stage_name
+
+    throttle {
+      path        = "/jobs/POST"
+      rate_limit  = var.rate_limit
+      burst_limit = var.burst_limit
+    }
+
+    throttle {
+      path        = "/jobs/{job_id}/GET"
+      rate_limit  = var.get_rate_limit
+      burst_limit = var.get_burst_limit
+    }
   }
 
   throttle_settings {
-    rate_limit  = var.rate_limit
-    burst_limit = var.burst_limit
+    rate_limit  = max(var.rate_limit, var.get_rate_limit)
+    burst_limit = max(var.burst_limit, var.get_burst_limit)
   }
 
   quota_settings {

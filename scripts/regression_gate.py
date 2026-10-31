@@ -36,6 +36,7 @@ import os
 import sys
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -57,6 +58,17 @@ from invoice_extraction.domain.ground_truth import ground_truth_to_extraction  #
 
 DEFAULT_RPM = 12
 ERROR_KEY = "error"
+
+
+@dataclass(frozen=True)
+class TestDocument:
+    """One Test Set document: its id, its PDF and the Extraction-shaped ground truth."""
+
+    __test__ = False  # not a pytest class
+
+    invoice_no: str
+    filename: str
+    expected: dict[str, Any]
 
 
 class RateLimitedModel:
@@ -82,13 +94,12 @@ class RateLimitedModel:
         return self._inner.extract(request)
 
 
-def load_test_set(csv_path: Path, manifest_path: Path) -> list[tuple[str, str, dict[str, Any]]]:
-    """(invoice_no, filename, expected Extraction-shaped dict) per Test Set document."""
+def load_test_set(csv_path: Path, manifest_path: Path) -> list[TestDocument]:
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     with csv_path.open(newline="", encoding="utf-8") as handle:
         rows = {row["filename"]: row for row in csv.DictReader(handle)}
     return [
-        (
+        TestDocument(
             entry["invoice_no"],
             entry["filename"],
             ground_truth_to_extraction(json.loads(rows[entry["filename"]]["json_data"])),
@@ -97,8 +108,25 @@ def load_test_set(csv_path: Path, manifest_path: Path) -> list[tuple[str, str, d
     ]
 
 
+def graph_runner(extract: Any, pdf_dir: Path) -> Callable[[str], dict[str, Any] | None]:
+    """Run the real graph on a PDF found under `pdf_dir`: filename -> Extraction dict or None.
+
+    A business failure (unreadable PDF, schema still invalid) is a None answer. An outage of
+    the models (quota exhausted, `ModelUnavailableError`) raises, so it stays inconclusive.
+    """
+
+    def run(filename: str) -> dict[str, Any] | None:
+        found = next(pdf_dir.rglob(filename), None)
+        if found is None:
+            raise FileNotFoundError(f"{filename} not found under {pdf_dir}")
+        result = extract(found.read_bytes())
+        return result.extraction.model_dump(mode="json") if result.extraction else None
+
+    return run
+
+
 def live_extractor(pdf_dir: Path, rpm: float) -> tuple[Callable[[str], Any], str]:
-    """Run the real graph; returns (invoice filename -> Extraction dict or None, prompt version)."""
+    """Run the real graph on Gemini; returns (runner, prompt version)."""
     from google import genai
 
     from invoice_extraction.adapters.gemini import GeminiExtractionModel
@@ -109,19 +137,7 @@ def live_extractor(pdf_dir: Path, rpm: float) -> tuple[Callable[[str], Any], str
         sys.exit("GATE_GEMINI_API_KEY is not set (the gate uses its own Google project)")
     model = RateLimitedModel(GeminiExtractionModel(genai.Client(api_key=key)), rpm)
     extract = build_extract_invoice(model)
-
-    def run(filename: str) -> dict[str, Any] | None:
-        found = next(pdf_dir.rglob(filename), None)
-        if found is None:
-            raise FileNotFoundError(f"{filename} not found under {pdf_dir}")
-        result = extract(found.read_bytes())
-        return result.extraction.model_dump(mode="json") if result.extraction else None
-
-    return run, extract_version(extract)
-
-
-def extract_version(extract: Any) -> str:
-    return extract._bundle.version  # the Prompt Version recorded in the baseline
+    return graph_runner(extract, pdf_dir), extract.prompt_version
 
 
 def replay_extractor(path: Path) -> Callable[[str], Any]:
@@ -139,30 +155,19 @@ def replay_extractor(path: Path) -> Callable[[str], Any]:
     return run
 
 
-def collect_run(
-    test_set: list[tuple[str, str, dict[str, Any]]], extract: Callable[[str], Any]
-) -> GateRun:
+def collect_run(test_set: list[TestDocument], extract: Callable[[str], Any]) -> GateRun:
     """Score every Test Set document. Any failure to obtain an answer is inconclusive;
-    an answer that is no valid Extraction, or none, is a conclusive miss."""
+    an answer that is no valid Extraction, or none, is a conclusive miss (`score_document`)."""
     outcomes = []
-    for invoice_no, filename, expected in test_set:
+    for document in test_set:
         try:
-            answer = extract(filename)
+            answer = extract(document.filename)
         except Exception as error:
             outcomes.append(
-                DocumentOutcome(invoice_no, False, note=f"{type(error).__name__}: {error}")
+                DocumentOutcome(document.invoice_no, False, note=f"{type(error).__name__}: {error}")
             )
             continue
-        try:
-            outcomes.append(score_document(invoice_no, expected, answer))
-        except ValueError as error:  # pydantic ValidationError: the answer is not an Extraction
-            outcome = score_document(invoice_no, expected, None)
-            outcomes.append(
-                DocumentOutcome(
-                    invoice_no, True, False, outcome.field_scores, note="invalid extraction"
-                )
-            )
-            print(f"{invoice_no}: invalid extraction ({error.__class__.__name__})", file=sys.stderr)
+        outcomes.append(score_document(document.invoice_no, document.expected, answer))
     return GateRun(tuple(outcomes), expected_documents=len(test_set))
 
 

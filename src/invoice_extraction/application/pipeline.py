@@ -122,6 +122,11 @@ class ExtractInvoice:
         self._schema = model_schema()
         self.graph = self._build_graph()
 
+    @property
+    def prompt_version(self) -> str:
+        """The Prompt Version (content hash of the Prompt Bundle) this use case runs with."""
+        return self._bundle.version
+
     def __call__(self, pdf: bytes, job_id: str | None = None) -> PipelineResult:
         run = _Run(job_id=job_id)
         started = self._clock()

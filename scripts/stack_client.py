@@ -1,5 +1,8 @@
 """Client for the running local stack, shared by the failure-injection tests and the demo.
 
+An imported helper, not a PEP 723 script: the scripts and tests that use it run inside the
+project environment (`uv run`), and `python scripts/stack_client.py wait` only waits for it.
+
 Standard library only. It drives the stack the way a caller does (HTTP API, presigned PUT)
 and reads what the operator reads: the queue depth from ElasticMQ and the wide events the
 workers print. Failures are injected through the fake-gemini control endpoint only.
@@ -24,10 +27,13 @@ SQS = os.environ.get("STACK_SQS_URL", "http://localhost:9324")
 KEY = os.environ.get("API_KEY", "local-dev-key")
 QUEUE_PREFIX = f"{SQS}/000000000000"  # ElasticMQ's fixed account id
 
-# Model names from the Prompt Bundle (src/invoice_extraction/prompts/settings.json).
-PRIMARY = "gemini-3.5-flash-lite"
-FALLBACK = "gemini-3.1-flash-lite"
-ESCALATION = "gemini-3.8-flash"
+# Model names from the Prompt Bundle, so a model change there cannot desync the scenarios.
+_SETTINGS = json.loads(
+    (ROOT / "src/invoice_extraction/prompts/settings.json").read_text(encoding="utf-8")
+)
+PRIMARY, FALLBACK, ESCALATION = (
+    _SETTINGS[tier]["name"] for tier in ("primary", "fallback", "escalation")
+)
 
 IN_PROGRESS = {"awaiting_upload", "queued", "processing"}
 

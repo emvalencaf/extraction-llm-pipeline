@@ -10,7 +10,12 @@ import pytest
 
 pytest.importorskip("assayer")
 
+from invoice_extraction.adapters.bundle_loader import load_bundle
+from invoice_extraction.adapters.fake_gemini import FakeGemini
+from invoice_extraction.application.ports import TransientModelError
+from invoice_extraction.composition.container import build_extract_invoice
 from invoice_extraction.domain.ground_truth import ground_truth_to_extraction
+from support.invoices import invoice_pdf, raw_extraction
 
 ROOT = Path(__file__).resolve().parent.parent
 FIXTURE = Path(__file__).parent / "fixtures" / "ground_truth_51109301.json"
@@ -157,3 +162,45 @@ def test_model_calls_are_spaced_to_the_requested_rate():
     for _ in range(3):
         model.extract(None)
     assert slept == [5.0, 5.0]  # 12 RPM is one call every 5 s; the first goes at once
+
+
+def graph_outcomes(tmp_path, expected, model):
+    """Run the real graph (no retry sleeps) over one PDF and collect it as the gate does."""
+    (tmp_path / "doc.pdf").write_bytes(invoice_pdf())
+    extract = build_extract_invoice(model, sleep=lambda _: None, rng=lambda: 0.0)
+    run = gate.collect_run(
+        [gate.TestDocument("n0", "doc.pdf", expected)], gate.graph_runner(extract, tmp_path)
+    )
+    return run.documents[0]
+
+
+def test_exhausted_quota_in_the_real_graph_is_inconclusive(tmp_path, expected):
+    model = FakeGemini(reply=raw_extraction())
+    bundle = load_bundle()
+    for setting in (bundle.primary, bundle.fallback):
+        model.inject(setting.name, TransientModelError("429"))
+    outcome = graph_outcomes(tmp_path, expected, model)
+    assert not outcome.conclusive
+    assert "ModelUnavailableError" in outcome.note
+
+
+def test_an_unavailable_escalation_model_in_the_real_graph_is_inconclusive(tmp_path, expected):
+    bad = raw_extraction()
+    bad["totals"]["gross_amount"] = "n/a"  # forces repairs, then the escalation tier
+    model = FakeGemini(reply=bad)
+    model.inject(load_bundle().escalation.name, TransientModelError("429"))
+    assert not graph_outcomes(tmp_path, expected, model).conclusive
+
+
+def test_a_job_the_graph_fails_on_the_document_is_a_conclusive_miss(tmp_path, expected):
+    (tmp_path / "doc.pdf").write_bytes(b"not a pdf")
+    extract = build_extract_invoice(FakeGemini(reply=raw_extraction()))
+    run = gate.collect_run(
+        [gate.TestDocument("n0", "doc.pdf", expected)], gate.graph_runner(extract, tmp_path)
+    )
+    assert run.documents[0].conclusive and not run.documents[0].all_correct
+
+
+def test_the_prompt_version_is_public_on_the_use_case():
+    extract = build_extract_invoice(FakeGemini(reply=raw_extraction()))
+    assert extract.prompt_version == load_bundle().version

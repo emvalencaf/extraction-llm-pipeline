@@ -57,12 +57,17 @@ def build_model() -> ExtractionModel:
     return HttpExtractionModel(os.environ["FAKE_GEMINI_URL"])
 
 
+def _env_number(name: str, default: float, cast: type = int) -> float:
+    """The environment variable `name` as `cast`, or `default` when unset."""
+    return cast(os.environ.get(name, default))
+
+
 def build_retry_policy() -> RetryPolicy:
     defaults = RetryPolicy()
     return RetryPolicy(
-        max_receives=int(os.environ.get("MAX_RECEIVES", defaults.max_receives)),
-        base_seconds=int(os.environ.get("RETRY_BASE_SECONDS", defaults.base_seconds)),
-        cap_seconds=int(os.environ.get("RETRY_CAP_SECONDS", defaults.cap_seconds)),
+        max_receives=_env_number("MAX_RECEIVES", defaults.max_receives),
+        base_seconds=_env_number("RETRY_BASE_SECONDS", defaults.base_seconds),
+        cap_seconds=_env_number("RETRY_CAP_SECONDS", defaults.cap_seconds),
     )
 
 
@@ -70,9 +75,9 @@ def build_llm_retry_policy() -> LlmRetryPolicy:
     """Short in-process retries of a model call; compressed in compose, as in production."""
     defaults = LlmRetryPolicy()
     return LlmRetryPolicy(
-        max_attempts=int(os.environ.get("LLM_MAX_ATTEMPTS", defaults.max_attempts)),
-        base_delay=float(os.environ.get("LLM_BACKOFF_BASE_SECONDS", defaults.base_delay)),
-        max_delay=float(os.environ.get("LLM_BACKOFF_CAP_SECONDS", defaults.max_delay)),
+        max_attempts=_env_number("LLM_MAX_ATTEMPTS", defaults.max_attempts),
+        base_delay=_env_number("LLM_BACKOFF_BASE_SECONDS", defaults.base_delay, float),
+        max_delay=_env_number("LLM_BACKOFF_CAP_SECONDS", defaults.max_delay, float),
     )
 
 

@@ -23,6 +23,17 @@ heading when `development` is released to `master`.
 
 ### Changed
 
+- Review fixes for the gate, resilience and infra work: the API usage plan throttles POST
+  (1 rps, burst 2) and GET (20/40) per method through `api_stages.throttle`, with the plan
+  ceiling at the larger of the two, so the GET limit is no longer capped by the POST one;
+  the image size and cold start measurements are recorded in `infra/README.md` and the
+  README (local, not measured on Lambda); `ExtractInvoice.prompt_version` is public and the
+  gate no longer reads a private attribute; the gate uses a `TestDocument` dataclass, scores an
+  invalid extraction in `score_document` (one place) and has tests that a quota or model
+  outage in the real graph is inconclusive while an unreadable PDF is a conclusive miss;
+  `assayer_scoring` shares field lists between `FIELD_MAP` and the amount keys;
+  `stack_client` reads the model names from `prompts/settings.json`; the runtime retry
+  policies share an environment helper.
 - Commit titles have no length limit: removed the 72-character check from the `commit-msg`
   hook (also run by CI) and from CONTRIBUTING.md.
 - Redrive and final-state rules and a `RetryPolicy` (defaults in one place, built once

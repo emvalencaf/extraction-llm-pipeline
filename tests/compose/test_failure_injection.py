@@ -74,7 +74,10 @@ def test_3b_a_failed_repair_ends_failed_validation_without_the_dlq():
 
     assert job["status"] == "failed_validation"
     assert job["reason"] == "schema_invalid"
-    assert job["errors"]  # the validation errors of the best attempt
+    assert job["errors"]  # the validation errors of the last attempt
+    # The best attempt itself is not preserved: a failed_validation result carries only the
+    # errors (PipelineResult.extraction is None and the job record has no field for a partial
+    # extraction), so the API has nothing to expose. Only the absence can be asserted.
     assert "result" not in job
     (event,) = stack.job_events(job_id)
     assert (event["outcome"], event["repairs"], event["escalated"]) == (

@@ -11,6 +11,8 @@ G2). Amounts become floats, which `numeric_tolerance` needs; the tolerance is ha
 
 from typing import Any
 
+from pydantic import ValidationError
+
 from invoice_extraction.domain.gate import DocumentOutcome
 from invoice_extraction.domain.schema import Extraction
 
@@ -18,6 +20,21 @@ AMOUNT_TOLERANCE = 0.005
 _TEXT = ["normalized_exact_match"]
 _AMOUNT = [{"numeric_tolerance": {"tolerance": AMOUNT_TOLERANCE}}]
 _PARTY = {"name": _TEXT, "address": _TEXT, "tax_id": _TEXT}
+_ITEM_FIELDS = {
+    "description": _TEXT,
+    "quantity": _AMOUNT,
+    "unit": _TEXT,
+    "unit_price": _AMOUNT,
+    "net_amount": _AMOUNT,
+    "vat_pct": _AMOUNT,
+    "gross_amount": _AMOUNT,
+}
+_TOTALS_FIELDS = {
+    "vat_pct": _AMOUNT,
+    "net_amount": _AMOUNT,
+    "vat_amount": _AMOUNT,
+    "gross_amount": _AMOUNT,
+}
 
 FIELD_MAP: dict[str, Any] = {
     "invoice_no": _TEXT,
@@ -28,24 +45,15 @@ FIELD_MAP: dict[str, Any] = {
         for side in ("seller", "client")
         for name, metrics in _PARTY.items()
     },
-    "totals.vat_pct": _AMOUNT,
-    "totals.net_amount": _AMOUNT,
-    "totals.vat_amount": _AMOUNT,
-    "totals.gross_amount": _AMOUNT,
+    **{f"totals.{name}": metrics for name, metrics in _TOTALS_FIELDS.items()},
     # an invoice lists its items in a fixed order, so pair them by position
-    "items": {
-        "align": "positional",
-        "properties": {
-            "description": _TEXT,
-            "quantity": _AMOUNT,
-            "unit": _TEXT,
-            "unit_price": _AMOUNT,
-            "net_amount": _AMOUNT,
-            "vat_pct": _AMOUNT,
-            "gross_amount": _AMOUNT,
-        },
-    },
+    "items": {"align": "positional", "properties": _ITEM_FIELDS},
 }
+
+# Every field compared as a number: canonical() turns these into floats.
+_AMOUNT_KEYS = frozenset(
+    name for fields in (_ITEM_FIELDS, _TOTALS_FIELDS) for name, m in fields.items() if m is _AMOUNT
+)
 
 
 def canonical(extraction: dict[str, Any] | Extraction) -> dict[str, Any]:
@@ -55,31 +63,35 @@ def canonical(extraction: dict[str, Any] | Extraction) -> dict[str, Any]:
     )
     data = model.model_dump(mode="json")  # Decimal and date become strings
 
-    def numbers(node: Any, key: str | None = None) -> Any:
+    def amounts_as_floats(node: Any, key: str | None = None) -> Any:
         if isinstance(node, dict):
-            return {k: numbers(v, k) for k, v in node.items()}
+            return {k: amounts_as_floats(v, k) for k, v in node.items()}
         if isinstance(node, list):
-            return [numbers(v, key) for v in node]
+            return [amounts_as_floats(v, key) for v in node]
         if key in _AMOUNT_KEYS and isinstance(node, str):
             return float(node)
         return node
 
-    return numbers(data)
-
-
-_AMOUNT_KEYS = {"quantity", "unit_price", "net_amount", "vat_pct", "gross_amount", "vat_amount"}
+    return amounts_as_floats(data)
 
 
 def score_document(
     invoice_no: str, expected: dict[str, Any], predicted: Extraction | dict[str, Any] | None
 ) -> DocumentOutcome:
     """A conclusive outcome: `predicted` None means the pipeline answered with no Extraction
-    (a business failure), which scores zero on every field."""
+    (a business failure), and an answer that is no valid Extraction counts the same; both
+    score zero on every field (the latter is noted)."""
     from assayer.models import Case, Dataset
     from assayer.runner import Runner, parse_field_map
 
     case = Case(input=invoice_no, id=invoice_no, expected_output=canonical(expected))
-    answer = canonical(predicted) if predicted is not None else {"items": []}
+    note = ""
+    answer: dict[str, Any] = {"items": []}
+    if predicted is not None:
+        try:
+            answer = canonical(predicted)
+        except ValidationError:
+            predicted, note = None, "invalid extraction"
     experiment = Runner(lambda _: answer, field_metrics=parse_field_map(FIELD_MAP)).run(
         Dataset("invoices", [case])
     )
@@ -97,4 +109,5 @@ def score_document(
         True,
         all_correct=predicted is not None and all(v >= 1.0 for v in scores.values()),
         field_scores=scores,
+        note=note,
     )
