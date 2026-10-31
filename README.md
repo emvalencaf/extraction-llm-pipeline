@@ -177,7 +177,16 @@ make stack-smoke      # happy path: create a job, upload a PDF, poll until succe
 make stack-lifecycle  # poison message, redrive, idempotency, 403 and 429
 make redrive          # replay the dead-letter queue with native SQS redrive
 make stack-down       # stop and remove the containers
+make test-compose     # failure-injection suite: the 11 scenarios on a fresh stack
+make demo-resilience  # watch scenarios 1, 2, 4 and 5 as a readable timeline
 ```
+
+Failure injection uses only the `fake-gemini` control endpoint and environment variables
+(`POST /control/scenario` with `mode` `error`, `reply` or `crash`, optionally limited to one
+`model` and a number of `times`; `DELETE /control/scenario` clears it). `compose.yaml`
+compresses the timings (backoff, queue delay, visibility timeout, upload TTL). The suite
+takes about five minutes, most of it the two scenarios that wait on the queue: the DLQ
+after quota exhaustion and the Lambda timeout on the last receive.
 
 The Lambda image installs its dependencies from `uv.lock`.
 

@@ -4,9 +4,10 @@ Variables: JOBS_TABLE, BUCKET, GEMINI_API_KEY (real Gemini adapter; wins when se
 GEMINI_API_KEY_SSM_PARAMETER (name of the SecureString holding it) or FAKE_GEMINI_URL
 (HTTP model service otherwise), optional S3_PUBLIC_ENDPOINT_URL (host named in presigned
 URLs). Queue behavior: MAX_RECEIVES (5), RETRY_BASE_SECONDS (30),
-RETRY_CAP_SECONDS (900), UPLOAD_TTL_SECONDS (900), and for the worker JOBS_QUEUE_URL or
-JOBS_QUEUE_NAME (jobs) to find the queue it delays messages on. boto3 itself honors
-AWS_ENDPOINT_URL_<SERVICE>, AWS_REGION and the credentials variables.
+RETRY_CAP_SECONDS (900), UPLOAD_TTL_SECONDS (900), the in-process retries of a model call
+LLM_MAX_ATTEMPTS (3), LLM_BACKOFF_BASE_SECONDS (1), LLM_BACKOFF_CAP_SECONDS (8), and for
+the worker JOBS_QUEUE_URL or JOBS_QUEUE_NAME (jobs) to find the queue it delays messages on.
+boto3 itself honors AWS_ENDPOINT_URL_<SERVICE>, AWS_REGION and the credentials variables.
 """
 
 import os
@@ -21,6 +22,7 @@ from invoice_extraction.adapters.json_events import JsonEventSink
 from invoice_extraction.adapters.s3_blobs import S3BlobStore
 from invoice_extraction.adapters.sqs_visibility import SqsVisibility
 from invoice_extraction.application.jobs import JobService
+from invoice_extraction.application.pipeline import RetryPolicy as LlmRetryPolicy
 from invoice_extraction.application.ports import ExtractionModel
 from invoice_extraction.composition.container import build_extract_invoice
 from invoice_extraction.composition.queues import jobs_queue_url
@@ -64,6 +66,16 @@ def build_retry_policy() -> RetryPolicy:
     )
 
 
+def build_llm_retry_policy() -> LlmRetryPolicy:
+    """Short in-process retries of a model call; compressed in compose, as in production."""
+    defaults = LlmRetryPolicy()
+    return LlmRetryPolicy(
+        max_attempts=int(os.environ.get("LLM_MAX_ATTEMPTS", defaults.max_attempts)),
+        base_delay=float(os.environ.get("LLM_BACKOFF_BASE_SECONDS", defaults.base_delay)),
+        max_delay=float(os.environ.get("LLM_BACKOFF_CAP_SECONDS", defaults.max_delay)),
+    )
+
+
 def build_job_service() -> JobService:
     s3 = boto3.client("s3", config=_PATH_STYLE)
     # Optional: only the local stack needs presigned URLs on a host (localhost) other than the
@@ -77,7 +89,9 @@ def build_job_service() -> JobService:
     return JobService(
         jobs=DynamoJobRepository(boto3.resource("dynamodb").Table(os.environ["JOBS_TABLE"])),
         blobs=S3BlobStore(s3, os.environ["BUCKET"], presign_client=presigner),
-        extract=build_extract_invoice(build_model(), sink=JsonEventSink()),
+        extract=build_extract_invoice(
+            build_model(), sink=JsonEventSink(), retry=build_llm_retry_policy()
+        ),
         upload_ttl=int(os.environ.get("UPLOAD_TTL_SECONDS", UPLOAD_TTL_SECONDS)),
         retry=build_retry_policy(),
     )

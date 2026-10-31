@@ -9,6 +9,10 @@ heading when `development` is released to `master`.
 
 ### Fixed
 
+- The local poller deleted the message when a Lambda invoke came back as a function error
+  (for example a timeout): it now leaves it for redelivery, as the real event source mapping
+  does.
+
 - Lambda image installs from `uv.lock` (including `google-genai`) and the SDK import is
   lazy, so `api_handler` and `worker_handler` start; verified with the local stack.
 - On the last receive any processing exception marks the job `failed`
@@ -33,6 +37,13 @@ heading when `development` is released to `master`.
 
 ### Added
 
+- Failure-injection suite and `make demo-resilience` (#34): the 11 scenarios of #23 run as
+  compose tests (`make test-compose`, marker `compose`) driven only by `fake-gemini` and
+  environment variables. `fake-gemini` gains `POST/DELETE /control/scenario` (modes `error`,
+  `reply`, `crash`; model targeting; call counts) and `GET /control/calls`. The model retry
+  timings are read from `LLM_MAX_ATTEMPTS`, `LLM_BACKOFF_BASE_SECONDS` and
+  `LLM_BACKOFF_CAP_SECONDS`; compose compresses them with the queue and upload TTL timings.
+  The demo prints scenarios 1, 2, 4 and 5 as a timeline.
 - Regression gate (#35): `scripts/regression_gate.py` runs the real graph on the Test Set
   (temperature 0, model calls paced to 12 RPM, key of its own Google project in
   `GATE_GEMINI_API_KEY`), scores deterministic assayer metrics (per field, line items,

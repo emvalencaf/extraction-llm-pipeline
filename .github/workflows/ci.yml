@@ -44,6 +44,16 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - run: uv run pytest
 
+  failure-injection:
+    name: Failure injection (compose)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Run the 11 scenarios on the local stack
+        run: make test-compose
+
   architecture:
     name: Import layers
     runs-on: ubuntu-latest

@@ -81,6 +81,16 @@ def test_worker_leaves_the_message_for_redelivery_on_failure(queues, outcome):
     assert drain(sqs, jobs) == ["{}"]
 
 
+def test_worker_leaves_the_message_when_the_lambda_reports_a_function_error(queues):
+    """RIE answers a timed-out invoke with an error payload, not a batchItemFailures list."""
+    sqs, _, jobs = queues
+    sqs.send_message(QueueUrl=jobs, MessageBody="{}")
+
+    work_once(sqs, jobs, lambda event: {"errorMessage": "Task timed out after 12.00 seconds"})
+
+    assert drain(sqs, jobs) == ["{}"]
+
+
 def test_shim_translates_http_to_api_gateway_proxy_events():
     events = []
 
