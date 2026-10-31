@@ -5,12 +5,15 @@ infrastructure failure the message is first hidden for a growing visibility dela
 """
 
 import json
+import logging
 from collections.abc import Callable
 from typing import Any
 from urllib.parse import unquote_plus
 
 from invoice_extraction.application.jobs import JobService, RetryLaterError, job_id_from_key
 from invoice_extraction.application.ports import QueueDelayer
+
+logger = logging.getLogger(__name__)
 
 Handler = Callable[[dict[str, Any], Any], dict[str, Any]]
 
@@ -31,9 +34,19 @@ def make_worker_handler(service: JobService, delayer: QueueDelayer | None = None
                     try:
                         delayer.delay(record["receiptHandle"], retry.delay)
                     except Exception as error:  # the default visibility timeout still applies
-                        print(f"could not delay message: {error!r}", flush=True)
+                        logger.warning(
+                            "could not delay message message_id=%s error=%s",
+                            record["messageId"],
+                            type(error).__name__,
+                        )
                 failures.append({"itemIdentifier": record["messageId"]})
-            except Exception:
+            except Exception as error:
+                logger.error(
+                    "delivery failed message_id=%s receive_count=%s error=%s",
+                    record["messageId"],
+                    receive_count,
+                    type(error).__name__,
+                )
                 failures.append({"itemIdentifier": record["messageId"]})
         return {"batchItemFailures": failures}
 

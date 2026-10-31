@@ -6,6 +6,7 @@ queue and invokes its own RIE container, because RIE cannot take simultaneous in
 """
 
 import json
+import logging
 import os
 import threading
 import time
@@ -14,6 +15,8 @@ from collections.abc import Callable
 from typing import Any
 
 import boto3
+
+logger = logging.getLogger(__name__)
 
 Invoke = Callable[[dict[str, Any]], dict[str, Any]]
 
@@ -61,7 +64,11 @@ def work_once(sqs, queue_url: str, invoke: Invoke, wait_seconds: int = 0) -> boo
     try:
         result = invoke(event)
     except Exception as error:
-        print(f"invoke failed, message left for redelivery: {error!r}", flush=True)
+        logger.warning(
+            "invoke failed, message left for redelivery message_id=%s error=%s",
+            message["MessageId"],
+            type(error).__name__,
+        )
         return True
     if not result.get("batchItemFailures"):
         sqs.delete_message(QueueUrl=queue_url, ReceiptHandle=message["ReceiptHandle"])
@@ -83,7 +90,7 @@ def _forever(step: Callable[[], bool], idle: float = 0.5) -> None:
             if not step():
                 time.sleep(idle)
         except Exception as error:  # keep the loop alive while dependencies start up
-            print(f"poller step failed: {error!r}", flush=True)
+            logger.warning("poller step failed error=%s", type(error).__name__)
             time.sleep(1)
 
 
@@ -93,11 +100,12 @@ def _queue_url(sqs, name: str) -> str:
         try:
             return sqs.get_queue_url(QueueName=name)["QueueUrl"]
         except Exception as error:
-            print(f"waiting for queue {name}: {error!r}", flush=True)
+            logger.info("waiting for queue queue=%s error=%s", name, type(error).__name__)
             time.sleep(2)
 
 
 def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
     s3_events = boto3.client("sqs", endpoint_url=os.environ["S3_EVENTS_SQS_ENDPOINT_URL"])
     jobs = boto3.client("sqs", endpoint_url=os.environ["JOBS_SQS_ENDPOINT_URL"])
     s3_events_url = _queue_url(s3_events, os.environ.get("S3_EVENTS_QUEUE_NAME", "s3-events"))
