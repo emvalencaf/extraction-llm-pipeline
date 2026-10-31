@@ -73,10 +73,46 @@ _Avoid_: Deanonymization, unmasking
 The share of invoices where at least one Ground Truth sensitive value still appears in the text after Anonymization.
 _Avoid_: Miss rate
 
+## Grounding
+
+**Grounding Rate**:
+The share of checked field values of an Extraction that appear in the invoice's own text. Measured per job and aggregated per run; it says a value is present in the source, not that it is correct.
+_Avoid_: Hallucination rate, accuracy
+
+**Ungrounded Value**:
+An extracted value, among those checked, that cannot be found in the invoice's text.
+_Avoid_: Hallucination, wrong value
+
+## Jobs
+
+**Job**:
+One request to extract one invoice, tracked from creation to a final status and returned to the client by id.
+_Avoid_: Task, request
+
+**Job Status**:
+The state of a Job: awaiting_upload, queued, processing, succeeded, failed_validation, failed or expired. It changes only through allowed transitions, enforced by conditional writes.
+_Avoid_: Phase, stage
+
+**Idempotency Key**:
+An optional client-chosen value on job creation; repeating it returns the same Job instead of creating another.
+_Avoid_: Request id, dedupe token
+
+**Retry Policy**:
+The queue rules for an infrastructure failure: the maximum number of receives, and a visibility delay that doubles per receive up to a cap. On the last receive the Job is marked failed.
+_Avoid_: Backoff config
+
+**Redrive**:
+The replay of messages from the dead-letter queue back to the main queue after an outage is fixed. Only Jobs that failed after exhausting their receives are replayed.
+_Avoid_: Retry, requeue
+
+**Wide Event**:
+One structured JSON log line that carries the whole context of an operation, either an `llm_call` (one model call) or a `job` (one Job end to end). It never contains invoice content.
+_Avoid_: Log line, trace
+
 ## Prompts
 
 **Prompt Bundle**:
-The single versioned unit holding everything that shapes the model's behavior: the system prompt, the few-shot examples, the repair prompt and the model settings.
+The single versioned unit holding everything that shapes the model's behavior: the system prompt, the few-shot examples, the repair prompt and the model settings. The few-shot examples are anonymized with Placeholders, like real inputs.
 _Avoid_: Prompt (when the whole unit is meant), template
 
 **Prompt Version**:
