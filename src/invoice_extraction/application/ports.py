@@ -1,5 +1,6 @@
 """Ports the use cases depend on; adapters implement them."""
 
+from dataclasses import dataclass
 from typing import Any, Protocol
 
 
@@ -8,9 +9,61 @@ class PdfTextReader(Protocol):
         """Return the text of a PDF; raise PdfUnreadableError if it cannot be read."""
 
 
+class PdfPageCounter(Protocol):
+    def page_count(self, pdf: bytes) -> int:
+        """Return the number of pages; raise PdfUnreadableError if it cannot be read."""
+
+
+@dataclass(frozen=True)
+class SensitiveSpan:
+    """A sensitive value found in a text: [start, end) of kind `kind` (NAME, ADDRESS, ...)."""
+
+    start: int
+    end: int
+    kind: str
+
+
+class SensitiveDetector(Protocol):
+    def detect(self, text: str) -> list[SensitiveSpan]:
+        """Return the spans of sensitive values in `text` (may overlap; caller resolves)."""
+
+
+@dataclass(frozen=True)
+class Example:
+    """One few-shot example: invoice text and the Extraction it should produce."""
+
+    text: str
+    extraction: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class Repair:
+    """Context for re-asking after a validation failure."""
+
+    instruction: str
+    previous: dict[str, Any]
+    errors: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ExtractionRequest:
+    model: str
+    text: str
+    schema: dict[str, Any]
+    system_prompt: str
+    examples: tuple[Example, ...] = ()
+    # None means "do not send": newer Gemini models reject the parameter
+    temperature: float | None = None
+    repair: Repair | None = None
+
+
 class ExtractionModel(Protocol):
-    def extract(self, text: str, schema: dict[str, Any]) -> dict[str, Any]:
-        """Return the raw (unvalidated) Extraction the model produced for `text`."""
+    def extract(self, request: ExtractionRequest) -> dict[str, Any]:
+        """Return the raw (unvalidated) Extraction the model produced.
+
+        Raise TransientModelError for retryable failures (429, 5xx) and
+        ModelRejectedError for failures a retry cannot fix.
+        """
 
 
 class PdfUnreadableError(Exception):
@@ -35,3 +88,18 @@ class BlobStore(Protocol):
 
 class BlobNotFoundError(Exception):
     """The uploaded object is not in the store."""
+
+
+class TransientModelError(Exception):
+    """A short-lived model failure (rate limit, overload); retry may succeed."""
+
+
+class ModelRejectedError(Exception):
+    """The model refused the request; retrying the same model is pointless."""
+
+
+class ModelUnavailableError(Exception):
+    """No configured model could answer; an infrastructure failure, not a business one.
+
+    The queue redelivers the job later with a growing visibility delay.
+    """

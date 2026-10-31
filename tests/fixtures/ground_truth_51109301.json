@@ -1,0 +1,56 @@
+{
+  "invoice_no": "51109301",
+  "date_of_issue": "03/07/2023",
+  "seller": {
+    "name": "TechVision Distributors Pvt Ltd",
+    "address": "Plot 14, MIDC Industrial Area, Andheri East, Mumbai, Maharashtra - 400093",
+    "tax_id": "27AABCT1234F1Z5",
+    "gstin": "27AABCT1234F1Z5"
+  },
+  "client": {
+    "name": "Raj Electronics Pvt Ltd",
+    "address": "42 MG Road, Bengaluru, Karnataka - 560001",
+    "tax_id": "901-95-4704"
+  },
+  "items": [
+    {
+      "item_no": "1.",
+      "description": "Garmin Fenix 7 Solar Multisport GPS",
+      "quantity": "9.00",
+      "unit_measure": "pcs",
+      "net_price": "74,120.00",
+      "net_worth": "667,080.00",
+      "vat_pct": "10%",
+      "gross_worth": "733,788.00"
+    },
+    {
+      "item_no": "2.",
+      "description": "Apple Watch Series 9 GPS 45mm Midnight",
+      "quantity": "8.00",
+      "unit_measure": "pcs",
+      "net_price": "52,083.00",
+      "net_worth": "416,664.00",
+      "vat_pct": "10%",
+      "gross_worth": "458,330.40"
+    },
+    {
+      "item_no": "3.",
+      "description": "Xiaomi 14 Pro 512GB White",
+      "quantity": "8.00",
+      "unit_measure": "pcs",
+      "net_price": "74,154.00",
+      "net_worth": "593,232.00",
+      "vat_pct": "10%",
+      "gross_worth": "652,555.20"
+    }
+  ],
+  "summary": {
+    "vat_pct": "10%",
+    "net_worth": "1,676,976.00",
+    "vat_amount": "167,697.60",
+    "gross_worth": "1,844,673.60",
+    "total_net_worth": "INR 1,676,976.00",
+    "total_vat": "INR 167,697.60",
+    "total_gross_worth": "INR 1,844,673.60"
+  }
+}

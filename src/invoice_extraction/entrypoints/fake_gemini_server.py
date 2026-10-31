@@ -11,6 +11,7 @@ from typing import Any
 from fastapi import FastAPI
 
 from invoice_extraction.adapters.fake_gemini import FakeGemini
+from invoice_extraction.application.ports import ExtractionRequest
 
 DEFAULT_REPLY: dict[str, Any] = {
     "invoice_no": "51109301",
@@ -53,7 +54,14 @@ def create_app() -> FastAPI:
 
     @app.post("/extract")
     def extract(payload: dict[str, Any]) -> dict[str, Any]:
-        return model.extract(payload["text"], payload["schema"])
+        return model.extract(
+            ExtractionRequest(
+                model=payload.get("model", "fake"),
+                text=payload["text"],
+                schema=payload["schema"],
+                system_prompt="",
+            )
+        )
 
     @app.put("/control/reply")
     def set_reply(new_reply: dict[str, Any]) -> dict[str, str]:
