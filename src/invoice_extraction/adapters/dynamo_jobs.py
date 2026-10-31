@@ -11,6 +11,7 @@ from botocore.exceptions import ClientError
 from invoice_extraction.domain.status import IllegalTransitionError
 
 _CONDITION_FAILED = "ConditionalCheckFailedException"
+_IDEMPOTENCY_PREFIX = "idem#"
 
 
 def _conflict(error: ClientError) -> bool:
@@ -28,6 +29,8 @@ class DynamoJobRepository:
         )
 
     def get(self, job_id: str) -> dict[str, Any] | None:
+        if job_id.startswith(_IDEMPOTENCY_PREFIX):  # key records are not jobs
+            return None
         return self._table.get_item(Key={"job_id": job_id}, ConsistentRead=True).get("Item")
 
     def transition(
@@ -64,7 +67,7 @@ class DynamoJobRepository:
             raise
 
     def claim_idempotency_key(self, key: str, job_id: str) -> str:
-        item_id = f"idem#{key}"
+        item_id = f"{_IDEMPOTENCY_PREFIX}{key}"
         try:
             self._table.put_item(
                 Item={"job_id": item_id, "target": job_id},

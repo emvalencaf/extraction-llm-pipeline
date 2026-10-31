@@ -12,7 +12,6 @@ import os
 
 import boto3
 from botocore.config import Config
-from google import genai
 
 from invoice_extraction.adapters.dynamo_jobs import DynamoJobRepository
 from invoice_extraction.adapters.gemini import GeminiExtractionModel
@@ -23,7 +22,7 @@ from invoice_extraction.adapters.sqs_visibility import SqsVisibility
 from invoice_extraction.application.jobs import JobService
 from invoice_extraction.application.ports import ExtractionModel
 from invoice_extraction.composition.container import build_extract_invoice
-from invoice_extraction.domain.status import UPLOAD_TTL_SECONDS
+from invoice_extraction.domain.status import UPLOAD_TTL_SECONDS, RetryPolicy
 
 _PATH_STYLE = Config(s3={"addressing_style": "path"})
 
@@ -32,8 +31,19 @@ def build_model() -> ExtractionModel:
     """The real Gemini adapter when GEMINI_API_KEY is set, else the fake over HTTP."""
     api_key = os.environ.get("GEMINI_API_KEY")
     if api_key:
+        from google import genai  # lazy: only the real-model path needs the SDK
+
         return GeminiExtractionModel(genai.Client(api_key=api_key))
     return HttpExtractionModel(os.environ["FAKE_GEMINI_URL"])
+
+
+def build_retry_policy() -> RetryPolicy:
+    defaults = RetryPolicy()
+    return RetryPolicy(
+        max_receives=int(os.environ.get("MAX_RECEIVES", defaults.max_receives)),
+        base_seconds=int(os.environ.get("RETRY_BASE_SECONDS", defaults.base_seconds)),
+        cap_seconds=int(os.environ.get("RETRY_CAP_SECONDS", defaults.cap_seconds)),
+    )
 
 
 def build_job_service() -> JobService:
@@ -49,9 +59,7 @@ def build_job_service() -> JobService:
         blobs=S3BlobStore(s3, os.environ["BUCKET"], presign_client=presigner),
         extract=build_extract_invoice(build_model(), sink=JsonEventSink()),
         upload_ttl=int(os.environ.get("UPLOAD_TTL_SECONDS", UPLOAD_TTL_SECONDS)),
-        max_receives=int(os.environ.get("MAX_RECEIVES", 5)),
-        retry_base_seconds=int(os.environ.get("RETRY_BASE_SECONDS", 30)),
-        retry_cap_seconds=int(os.environ.get("RETRY_CAP_SECONDS", 900)),
+        retry=build_retry_policy(),
     )
 
 

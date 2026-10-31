@@ -19,6 +19,7 @@ from invoice_extraction.composition.container import build_extract_invoice
 from invoice_extraction.domain.status import (
     IllegalTransitionError,
     JobStatus,
+    RetryPolicy,
     transition_sources,
 )
 from invoice_extraction.entrypoints.api_handler import make_api_handler
@@ -65,9 +66,7 @@ def make_service(model, clock, retry_base=10):
         blobs=S3BlobStore(boto3.client("s3", region_name="us-east-1"), BUCKET),
         extract=build_extract_invoice(model, sleep=lambda _: None),
         clock=clock,
-        max_receives=MAX_RECEIVES,
-        retry_base_seconds=retry_base,
-        retry_cap_seconds=60,
+        retry=RetryPolicy(max_receives=MAX_RECEIVES, base_seconds=retry_base, cap_seconds=60),
     )
 
 
@@ -241,6 +240,33 @@ def test_the_last_receive_marks_the_job_failed(aws, clock):
     stored = svc.get(job["job_id"])
     assert stored["status"] == "failed"
     assert stored["errors"] == ["retries_exhausted"]
+
+
+def test_any_error_on_the_last_receive_marks_the_job_failed(aws, clock):
+    svc = make_service(FakeGemini(reply=raw_extraction()), clock)
+    job = svc.create()
+    upload(job["job_id"])
+    svc._extract = lambda *_: (_ for _ in ()).throw(RuntimeError("boom"))
+
+    out = make_worker_handler(svc)(sqs_event(job["job_id"], receive=MAX_RECEIVES), None)
+
+    assert out == {"batchItemFailures": [{"itemIdentifier": "m1"}]}
+    stored = svc.get(job["job_id"])
+    assert stored["status"] == "failed"
+    assert stored["errors"] == ["retries_exhausted"]
+
+
+def test_any_error_before_the_last_receive_delays_the_message(aws, clock):
+    svc = make_service(FakeGemini(reply=raw_extraction()), clock)
+    delayer = RecordingDelayer()
+    job = svc.create()
+    upload(job["job_id"])
+    svc._extract = lambda *_: (_ for _ in ()).throw(RuntimeError("boom"))
+
+    make_worker_handler(svc, delayer=delayer)(sqs_event(job["job_id"], receive=2), None)
+
+    assert delayer.calls == [("rh", 20)]
+    assert svc.get(job["job_id"])["status"] == "queued"
 
 
 def test_a_missing_upload_on_the_last_receive_marks_the_job_failed(aws, clock):

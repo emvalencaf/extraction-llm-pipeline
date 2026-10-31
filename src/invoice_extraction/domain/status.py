@@ -1,5 +1,6 @@
 """Job states shared by every layer."""
 
+from dataclasses import dataclass
 from enum import StrEnum
 
 
@@ -52,6 +53,51 @@ TRANSITIONS: dict[JobStatus, frozenset[JobStatus]] = {
 
 RETRIES_EXHAUSTED = "retries_exhausted"
 UPLOAD_TTL_SECONDS = 15 * 60
+
+# A job in one of these states accepts no more work (a failed one only through redrive).
+FINAL_STATUSES: frozenset[JobStatus] = frozenset(
+    {JobStatus.SUCCEEDED, JobStatus.FAILED_VALIDATION, JobStatus.EXPIRED}
+)
+
+
+@dataclass(frozen=True)
+class RetryPolicy:
+    """How many times a message is delivered and how long it is hidden between tries."""
+
+    max_receives: int = 5
+    base_seconds: int = 30
+    cap_seconds: int = 900
+
+    def is_last(self, receive_count: int) -> bool:
+        return receive_count >= self.max_receives
+
+    def delay(self, receive_count: int) -> int:
+        """Visibility delay after the given receive: doubles each time, up to the cap."""
+        return min(self.cap_seconds, self.base_seconds * 2 ** (receive_count - 1))
+
+
+@dataclass(frozen=True)
+class Claim:
+    """A conditional move into PROCESSING: allowed sources and required attributes."""
+
+    expected: frozenset[JobStatus]
+    requires: dict[str, str] | None = None
+    reset: bool = False  # redrive: clear the previous failure before reprocessing
+
+
+def claim_for(status: JobStatus) -> Claim | None:
+    """The move that takes a job in `status` into PROCESSING, or None if it takes no work.
+
+    A FAILED job is claimed only when it failed for an infrastructure reason
+    (`retries_exhausted`); a business failure is never replayed.
+    """
+    if status in FINAL_STATUSES:
+        return None
+    if status == JobStatus.FAILED:
+        return Claim(
+            frozenset({JobStatus.FAILED}), requires={"failure_cause": RETRIES_EXHAUSTED}, reset=True
+        )
+    return Claim(transition_sources(JobStatus.PROCESSING) - {JobStatus.FAILED})
 
 
 def transition_sources(target: JobStatus) -> frozenset[JobStatus]:

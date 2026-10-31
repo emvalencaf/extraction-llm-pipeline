@@ -4,6 +4,7 @@ Every status change goes through `JobRepository.transition`, a conditional write
 against the domain transition table, so duplicate deliveries cannot corrupt a job.
 """
 
+import logging
 import time
 import uuid
 from collections.abc import Callable
@@ -13,7 +14,6 @@ from invoice_extraction.application.pipeline import PipelineResult
 from invoice_extraction.application.ports import (
     BlobStore,
     JobRepository,
-    ModelUnavailableError,
 )
 from invoice_extraction.domain.status import (
     MAX_PDF_BYTES,
@@ -21,11 +21,12 @@ from invoice_extraction.domain.status import (
     UPLOAD_TTL_SECONDS,
     IllegalTransitionError,
     JobStatus,
+    RetryPolicy,
     TerminalReason,
-    transition_sources,
+    claim_for,
 )
 
-_FINAL = {JobStatus.SUCCEEDED, JobStatus.FAILED_VALIDATION, JobStatus.EXPIRED}
+logger = logging.getLogger(__name__)
 
 
 def upload_key(job_id: str) -> str:
@@ -53,18 +54,14 @@ class JobService:
         *,
         clock: Callable[[], float] = time.time,
         upload_ttl: int = UPLOAD_TTL_SECONDS,
-        max_receives: int = 5,
-        retry_base_seconds: int = 30,
-        retry_cap_seconds: int = 900,
+        retry: RetryPolicy | None = None,
     ) -> None:
         self.jobs = jobs
         self._blobs = blobs
         self._extract = extract
         self._clock = clock
         self._upload_ttl = upload_ttl
-        self._max_receives = max_receives
-        self._retry_base = retry_base_seconds
-        self._retry_cap = retry_cap_seconds
+        self._retry = retry or RetryPolicy()
 
     def create(self, idempotency_key: str | None = None) -> dict[str, Any]:
         """Create a job and its upload URL. A repeated Idempotency-Key returns the first job
@@ -99,7 +96,7 @@ class JobService:
 
     def get(self, job_id: str) -> dict[str, Any] | None:
         job = self.jobs.get(job_id)
-        if job is None or job_id.startswith("idem#"):
+        if job is None:
             return None
         return self._view(self._expire_if_due(job))
 
@@ -133,8 +130,10 @@ class JobService:
 
         Returns normally when the delivery is done (including duplicates and jobs that no
         longer accept work). Raises RetryLaterError for a transient infrastructure failure and
-        any other exception for a failure to retry; on the last receive the job is marked
-        `failed` first, because the queue is about to move the message to the DLQ.
+        any other exception for a failure to retry. Any exception hides the message for a
+        growing delay; on the last receive the job is marked `failed` first, because the queue
+        is about to move the message to the DLQ. (A hard Lambda timeout cannot be caught, so
+        a job that times out on its last receive stays `processing`.)
         """
         job = self.jobs.get(job_id)
         if job is None:
@@ -151,27 +150,20 @@ class JobService:
             self._finish(job_id, result)
 
     def _claim(self, job: dict[str, Any]) -> bool:
-        status = JobStatus(job["status"])
+        claim = claim_for(JobStatus(job["status"]))
+        if claim is None:
+            return False
+        extra: dict[str, Any] = {"errors": [], "failure_cause": ""} if claim.reset else {}
         try:
-            if status == JobStatus.FAILED:
-                # redrive: only an infrastructure failure may be replayed
-                self.jobs.transition(
-                    job["job_id"],
-                    JobStatus.PROCESSING,
-                    expected={JobStatus.FAILED},
-                    requires={"failure_cause": RETRIES_EXHAUSTED},
-                    errors=[],
-                    failure_cause="",
-                )
-            elif status in _FINAL:
-                return False
-            else:
-                self.jobs.transition(
-                    job["job_id"],
-                    JobStatus.PROCESSING,
-                    expected=transition_sources(JobStatus.PROCESSING) - {JobStatus.FAILED},
-                )
+            self.jobs.transition(
+                job["job_id"],
+                JobStatus.PROCESSING,
+                expected=claim.expected,
+                requires=claim.requires,
+                **extra,
+            )
         except IllegalTransitionError:
+            logger.info("claim skipped job_id=%s", job["job_id"])
             return False  # a duplicate delivery, or a business failure: nothing to do
         return True
 
@@ -201,7 +193,7 @@ class JobService:
 
     def _on_error(self, job_id: str, receive_count: int, error: Exception) -> None:
         try:
-            if receive_count >= self._max_receives:
+            if self._retry.is_last(receive_count):
                 self.jobs.transition(
                     job_id,
                     JobStatus.FAILED,
@@ -209,9 +201,9 @@ class JobService:
                     failure_cause=RETRIES_EXHAUSTED,
                     errors=[RETRIES_EXHAUSTED],
                 )
-            elif isinstance(error, ModelUnavailableError):
-                self.jobs.transition(job_id, JobStatus.QUEUED, expected={JobStatus.PROCESSING})
-                delay = min(self._retry_cap, self._retry_base * 2 ** (receive_count - 1))
-                raise RetryLaterError(delay) from error
+                return
+            self.jobs.transition(job_id, JobStatus.QUEUED, expected={JobStatus.PROCESSING})
         except IllegalTransitionError:
-            pass
+            logger.info("error handling skipped, job moved on job_id=%s", job_id)
+            return
+        raise RetryLaterError(self._retry.delay(receive_count)) from error
