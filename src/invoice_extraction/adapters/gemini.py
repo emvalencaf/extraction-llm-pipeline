@@ -43,7 +43,7 @@ class GeminiExtractionModel:
             system_instruction=request.system_prompt,
             response_mime_type="application/json",
             response_json_schema=request.schema,
-            # newer models reject temperature; the Prompt Bundle sets None for them
+            # None omits the parameter (the Prompt Bundle decides per model)
             temperature=request.temperature,
         )
         try:
