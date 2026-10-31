@@ -6,6 +6,7 @@ from invoice_extraction.application.ports import BlobNotFoundError
 
 
 class S3BlobStore:
+    # `presign_client` is optional: it exists only for the local stack's public S3 host.
     def __init__(self, client, bucket: str, presign_client=None, expires: int = 900) -> None:
         self._client = client
         self._bucket = bucket
