@@ -8,6 +8,7 @@ import logging
 import time
 import uuid
 from collections.abc import Callable
+from dataclasses import replace
 from typing import Any
 
 from invoice_extraction.application.pipeline import PipelineResult
@@ -15,6 +16,7 @@ from invoice_extraction.application.ports import (
     BlobStore,
     JobRepository,
 )
+from invoice_extraction.domain.job import Job, JobUpdate
 from invoice_extraction.domain.status import (
     MAX_PDF_BYTES,
     RETRIES_EXHAUSTED,
@@ -56,7 +58,7 @@ class JobService:
         upload_ttl: int = UPLOAD_TTL_SECONDS,
         retry: RetryPolicy | None = None,
     ) -> None:
-        self.jobs = jobs
+        self._jobs = jobs
         self._blobs = blobs
         self._extract = extract
         self._clock = clock
@@ -68,25 +70,25 @@ class JobService:
         (marked `replayed`)."""
         job_id = uuid.uuid4().hex
         key = upload_key(job_id)
-        self.jobs.create(
-            {
-                "job_id": job_id,
-                "status": JobStatus.AWAITING_UPLOAD,
-                "key": key,
-                "created_at": int(self._clock()),
-            }
+        self._jobs.create(
+            Job(
+                job_id=job_id,
+                status=JobStatus.AWAITING_UPLOAD,
+                key=key,
+                created_at=int(self._clock()),
+            )
         )
         if idempotency_key is not None:
-            winner = self.jobs.claim_idempotency_key(idempotency_key, job_id)
+            winner = self._jobs.claim_idempotency_key(idempotency_key, job_id)
             if winner != job_id:
-                self.jobs.discard(job_id)
-                existing = self.jobs.get(winner)
+                self._jobs.discard(job_id)
+                existing = self._jobs.get(winner)
                 if existing is None:  # cannot happen: the job is written before its key
                     raise LookupError(f"idempotency key points at missing job {winner}")
                 existing = self._expire_if_due(existing)
                 view = {**self._view(existing), "replayed": True}
-                if existing["status"] == JobStatus.AWAITING_UPLOAD:
-                    view["upload_url"] = self._blobs.presign_put(existing["key"])
+                if existing.status == JobStatus.AWAITING_UPLOAD:
+                    view["upload_url"] = self._blobs.presign_put(existing.key)
                 return view
         return {
             "job_id": job_id,
@@ -95,35 +97,35 @@ class JobService:
         }
 
     def get(self, job_id: str) -> dict[str, Any] | None:
-        job = self.jobs.get(job_id)
+        job = self._jobs.get(job_id)
         if job is None:
             return None
         return self._view(self._expire_if_due(job))
 
     @staticmethod
-    def _view(job: dict[str, Any]) -> dict[str, Any]:
-        view = {"job_id": job["job_id"], "status": job["status"]}
-        if "result" in job:
-            view["result"] = job["result"]
-        if job.get("errors"):
-            view["errors"] = job["errors"]
-        if job.get("reason"):
-            view["reason"] = job["reason"]
+    def _view(job: Job) -> dict[str, Any]:
+        view: dict[str, Any] = {"job_id": job.job_id, "status": job.status}
+        if job.result is not None:
+            view["result"] = job.result
+        if job.errors:
+            view["errors"] = job.errors
+        if job.reason:
+            view["reason"] = job.reason
         return view
 
-    def _expire_if_due(self, job: dict[str, Any]) -> dict[str, Any]:
+    def _expire_if_due(self, job: Job) -> Job:
         """An upload that never arrived turns the job `expired` (a conditional write)."""
-        if job["status"] != JobStatus.AWAITING_UPLOAD:
+        if job.status != JobStatus.AWAITING_UPLOAD:
             return job
-        if self._clock() - int(job.get("created_at", 0)) <= self._upload_ttl:
+        if self._clock() - job.created_at <= self._upload_ttl:
             return job
         try:
-            self.jobs.transition(
-                job["job_id"], JobStatus.EXPIRED, expected={JobStatus.AWAITING_UPLOAD}
+            self._jobs.transition(
+                job.job_id, JobStatus.EXPIRED, expected={JobStatus.AWAITING_UPLOAD}
             )
         except IllegalTransitionError:  # the upload won the race; show the current state
-            return self.jobs.get(job["job_id"]) or job
-        return {**job, "status": JobStatus.EXPIRED}
+            return self._jobs.get(job.job_id) or job
+        return replace(job, status=JobStatus.EXPIRED)
 
     def process(self, job_id: str, receive_count: int = 1) -> None:
         """Handle one delivery of an uploaded PDF.
@@ -135,7 +137,7 @@ class JobService:
         is about to move the message to the DLQ. (A hard Lambda timeout cannot be caught, so
         a job that times out on its last receive stays `processing`.)
         """
-        job = self.jobs.get(job_id)
+        job = self._jobs.get(job_id)
         if job is None:
             raise LookupError(f"unknown job {job_id}")
         job = self._expire_if_due(job)
@@ -149,31 +151,31 @@ class JobService:
         if result is not None:
             self._finish(job_id, result)
 
-    def _claim(self, job: dict[str, Any]) -> bool:
-        claim = claim_for(JobStatus(job["status"]))
+    def _claim(self, job: Job) -> bool:
+        claim = claim_for(job.status)
         if claim is None:
             return False
-        extra: dict[str, Any] = {"errors": [], "failure_cause": ""} if claim.reset else {}
+        reset = JobUpdate(errors=[], failure_cause="") if claim.reset else None
         try:
-            self.jobs.transition(
-                job["job_id"],
+            self._jobs.transition(
+                job.job_id,
                 JobStatus.PROCESSING,
                 expected=claim.expected,
                 requires=claim.requires,
-                **extra,
+                update=reset,
             )
         except IllegalTransitionError:
-            logger.info("claim skipped job_id=%s", job["job_id"])
+            logger.info("claim skipped job_id=%s", job.job_id)
             return False  # a duplicate delivery, or a business failure: nothing to do
         return True
 
-    def _run(self, job: dict[str, Any]) -> PipelineResult | None:
+    def _run(self, job: Job) -> PipelineResult | None:
         """Fetch and extract. Returns None when the job was already finished here."""
-        key = job["key"]
+        key = job.key
         # Worker-side check backing the presigned PUT, which cannot cap the upload size.
         if self._blobs.size(key) > MAX_PDF_BYTES:
             self._finish(
-                job["job_id"],
+                job.job_id,
                 PipelineResult(
                     JobStatus.FAILED,
                     errors=[f"PDF exceeds {MAX_PDF_BYTES} bytes"],
@@ -181,28 +183,29 @@ class JobService:
                 ),
             )
             return None
-        return self._extract(self._blobs.get(key), job["job_id"])
+        return self._extract(self._blobs.get(key), job.job_id)
 
     def _finish(self, job_id: str, result: PipelineResult) -> None:
-        fields: dict[str, Any] = {"errors": result.errors}
-        if result.reason is not None:
-            fields["reason"] = str(result.reason)
-        if result.extraction is not None:
-            fields["result"] = result.extraction.model_dump(mode="json")
-        self.jobs.transition(job_id, result.status, expected={JobStatus.PROCESSING}, **fields)
+        update = JobUpdate(
+            errors=result.errors,
+            reason=None if result.reason is None else str(result.reason),
+            result=(
+                None if result.extraction is None else result.extraction.model_dump(mode="json")
+            ),
+        )
+        self._jobs.transition(job_id, result.status, expected={JobStatus.PROCESSING}, update=update)
 
     def _on_error(self, job_id: str, receive_count: int, error: Exception) -> None:
         try:
             if self._retry.is_last(receive_count):
-                self.jobs.transition(
+                self._jobs.transition(
                     job_id,
                     JobStatus.FAILED,
                     expected={JobStatus.PROCESSING},
-                    failure_cause=RETRIES_EXHAUSTED,
-                    errors=[RETRIES_EXHAUSTED],
+                    update=JobUpdate(failure_cause=RETRIES_EXHAUSTED, errors=[RETRIES_EXHAUSTED]),
                 )
                 return
-            self.jobs.transition(job_id, JobStatus.QUEUED, expected={JobStatus.PROCESSING})
+            self._jobs.transition(job_id, JobStatus.QUEUED, expected={JobStatus.PROCESSING})
         except IllegalTransitionError:
             logger.info("error handling skipped, job moved on job_id=%s", job_id)
             return

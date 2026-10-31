@@ -60,9 +60,13 @@ def clock():
     return Clock()
 
 
+def job_repository():
+    return DynamoJobRepository(boto3.resource("dynamodb", region_name="us-east-1").Table(TABLE))
+
+
 def make_service(model, clock, retry_base=10):
     return JobService(
-        jobs=DynamoJobRepository(boto3.resource("dynamodb", region_name="us-east-1").Table(TABLE)),
+        jobs=job_repository(),
         blobs=S3BlobStore(boto3.client("s3", region_name="us-east-1"), BUCKET),
         extract=build_extract_invoice(model, sleep=lambda _: None),
         clock=clock,
@@ -131,7 +135,7 @@ def test_transition_table_forbids_leaving_terminal_states():
 def test_conditional_write_rejects_an_illegal_transition(aws, clock):
     svc = make_service(good_model(), clock)
     job = svc.create()
-    repo = svc.jobs
+    repo = job_repository()
     repo.transition(job["job_id"], JobStatus.EXPIRED, expected={JobStatus.AWAITING_UPLOAD})
 
     with pytest.raises(IllegalTransitionError):
@@ -146,9 +150,9 @@ def test_only_one_of_two_concurrent_claims_wins(aws, clock):
     upload(job["job_id"])
     sources = {JobStatus.AWAITING_UPLOAD, JobStatus.QUEUED}
 
-    svc.jobs.transition(job["job_id"], JobStatus.PROCESSING, expected=sources)
+    job_repository().transition(job["job_id"], JobStatus.PROCESSING, expected=sources)
     with pytest.raises(IllegalTransitionError):
-        svc.jobs.transition(job["job_id"], JobStatus.PROCESSING, expected=sources)
+        job_repository().transition(job["job_id"], JobStatus.PROCESSING, expected=sources)
 
 
 def test_a_job_whose_upload_never_arrives_expires(aws, clock):

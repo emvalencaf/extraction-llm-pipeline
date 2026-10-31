@@ -1,7 +1,11 @@
 """Ports the use cases depend on; adapters implement them."""
 
+from collections.abc import Collection
 from dataclasses import dataclass
 from typing import Any, Protocol
+
+from invoice_extraction.domain.job import Job, JobUpdate
+from invoice_extraction.domain.status import JobStatus
 
 
 class PdfTextReader(Protocol):
@@ -80,18 +84,18 @@ class PdfUnreadableError(Exception):
 
 
 class JobRepository(Protocol):
-    def create(self, job: dict[str, Any]) -> None: ...
+    def create(self, job: Job) -> None: ...
 
-    def get(self, job_id: str) -> dict[str, Any] | None: ...
+    def get(self, job_id: str) -> Job | None: ...
 
     def transition(
         self,
         job_id: str,
-        to: Any,
+        to: JobStatus,
         *,
-        expected: Any,
-        requires: dict[str, Any] | None = None,
-        **fields: Any,
+        expected: Collection[JobStatus],
+        requires: dict[str, str] | None = None,
+        update: JobUpdate | None = None,
     ) -> None:
         """Move the job to status `to` only if its status is in `expected` (and every
         `requires` attribute matches); otherwise raise IllegalTransitionError."""

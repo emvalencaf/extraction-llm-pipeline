@@ -4,11 +4,13 @@ Idempotency keys live in the same table as items keyed `idem#<key>` pointing at 
 Every status change is a conditional write.
 """
 
-from typing import Any
+from collections.abc import Collection
+from dataclasses import asdict
 
 from botocore.exceptions import ClientError
 
-from invoice_extraction.domain.status import IllegalTransitionError
+from invoice_extraction.domain.job import Job, JobUpdate
+from invoice_extraction.domain.status import IllegalTransitionError, JobStatus
 
 _CONDITION_FAILED = "ConditionalCheckFailedException"
 _IDEMPOTENCY_PREFIX = "idem#"
@@ -22,26 +24,44 @@ class DynamoJobRepository:
     def __init__(self, table) -> None:
         self._table = table
 
-    def create(self, job: dict[str, Any]) -> None:
+    def create(self, job: Job) -> None:
         self._table.put_item(
-            Item={**job, "status": str(job["status"])},
+            Item={
+                "job_id": job.job_id,
+                "status": str(job.status),
+                "key": job.key,
+                "created_at": job.created_at,
+            },
             ConditionExpression="attribute_not_exists(job_id)",
         )
 
-    def get(self, job_id: str) -> dict[str, Any] | None:
+    def get(self, job_id: str) -> Job | None:
         if job_id.startswith(_IDEMPOTENCY_PREFIX):  # key records are not jobs
             return None
-        return self._table.get_item(Key={"job_id": job_id}, ConsistentRead=True).get("Item")
+        item = self._table.get_item(Key={"job_id": job_id}, ConsistentRead=True).get("Item")
+        if item is None:
+            return None
+        return Job(
+            job_id=item["job_id"],
+            status=JobStatus(item["status"]),
+            key=item["key"],
+            created_at=int(item.get("created_at", 0)),
+            errors=item.get("errors", []),
+            reason=item.get("reason"),
+            result=item.get("result"),
+            failure_cause=item.get("failure_cause"),
+        )
 
     def transition(
         self,
         job_id: str,
-        to: Any,
+        to: JobStatus,
         *,
-        expected: Any,
-        requires: dict[str, Any] | None = None,
-        **fields: Any,
+        expected: Collection[JobStatus],
+        requires: dict[str, str] | None = None,
+        update: JobUpdate | None = None,
     ) -> None:
+        fields = {k: v for k, v in asdict(update or JobUpdate()).items() if v is not None}
         sets = {"status": str(to), **fields}
         names = {f"#{k}": k for k in sets}
         values = {f":{k}": v for k, v in sets.items()}
