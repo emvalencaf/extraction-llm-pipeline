@@ -15,6 +15,8 @@ heading when `development` is released to `master`.
   `docs/experiments/gemini-placeholder-preservation.md` (140/140 verbatim on the
   Validation Set).
 - `kaggle` (dev) and `google-genai` dependencies; `data/kaggle/` is git-ignored.
+- `implement-spec` accepts an optional ticket range or list (e.g. `28-33`) to implement
+  only a subset of a spec's tickets, leaving the spec and other tickets open.
 
 ## [0.2.0] - 2026-10-23
 
