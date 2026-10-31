@@ -165,6 +165,22 @@ Every commit is checked by the hooks: Unicode, `ruff`, the message format
 without `.wiki/`, an automatic wiki update (skip it with `SKIP_WIKI_UPDATE=1`).
 To release, open a PR from `development` into `master`.
 
+### Local stack
+
+A token-free stack (moto S3/SQS, DynamoDB local, ElasticMQ, a fake Gemini and the
+Lambda images under the Runtime Interface Emulator) runs with Docker Compose. The API
+listens on `:8080`. `make` picks `docker compose` (v2) or `docker-compose` (v1).
+
+```bash
+make stack-up         # build and start the stack in the background
+make stack-smoke      # happy path: create a job, upload a PDF, poll until succeeded
+make stack-lifecycle  # poison message, redrive, idempotency, 403 and 429
+make redrive          # replay the dead-letter queue with native SQS redrive
+make stack-down       # stop and remove the containers
+```
+
+The Lambda image installs its dependencies from `uv.lock`.
+
 ### Status line budget
 
 The status line shows spend against a USD budget when you pay per token (no

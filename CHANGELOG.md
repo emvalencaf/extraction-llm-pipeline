@@ -7,6 +7,22 @@ heading when `development` is released to `master`.
 
 ## [Unreleased]
 
+### Fixed
+
+- Lambda image installs from `uv.lock` (including `google-genai`) and the SDK import is
+  lazy, so `api_handler` and `worker_handler` start; verified with the local stack.
+- On the last receive any processing exception marks the job `failed`
+  (`retries_exhausted`); any non-business error hides the message for a growing delay. A
+  hard Lambda timeout cannot be caught, so such a job stays `processing`.
+- An unavailable escalation model raises `ModelUnavailableError` (retried by the queue)
+  instead of ending as `failed_validation`.
+
+### Changed
+
+- Redrive and final-state rules and a `RetryPolicy` (defaults in one place, built once
+  from the environment) live in `domain/status.py`; the `idem#` key scheme stays in the
+  DynamoDB adapter; handlers and the poller log through `logging` without invoice content.
+
 ### Added
 
 - Async job lifecycle (#33): the full state machine (`awaiting_upload`, `queued`,
