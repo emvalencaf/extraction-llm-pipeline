@@ -42,6 +42,15 @@ heading when `development` is released to `master`.
 - `ExtractionModel.extract` takes an `ExtractionRequest`; `ExtractInvoice` takes a
   `PromptBundle`; `build_extract_invoice` accepts retry, repair, sleep and rng options.
 
+- Token-free local stack (#32): `compose.yaml` with Lambda RIE (API and two worker
+  containers), DynamoDB Local, moto (S3), ElasticMQ, an HTTP `fake-gemini` with a
+  control endpoint, a poller (S3 event relay skipping `s3:TestEvent`, URL-decoded keys,
+  one worker per RIE container), a FastAPI API shim and a boto3 `init`. `make stack-up`
+  starts it, `make stack-smoke` runs create job, presigned PUT, fetch result. Adds
+  `JobService`, API and worker Lambda handlers, DynamoDB/S3/HTTP-model adapters and
+  in-process seam-2 tests on moto. The `init` Terraform check is stubbed until
+  `infra/terraform` exists.
+
 - Split Manifest (seed 42, 60/20/20 stratified by line-item count) and its generator
   `scripts/make_split_manifest.py`.
 - Live Gemini Placeholder preservation test and its write-up in
