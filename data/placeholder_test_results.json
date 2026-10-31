@@ -1,0 +1,22 @@
+{
+  "model": "gemini-3.5-flash-lite",
+  "documents": 20,
+  "results": [
+    {
+      "format": "bracket",
+      "verbatim": 140,
+      "total": 140,
+      "rate": 1.0,
+      "per_field": {
+        "seller.name": "20/20",
+        "seller.tax_id": "20/20",
+        "seller.gstin": "20/20",
+        "seller.address": "20/20",
+        "client.name": "20/20",
+        "client.tax_id": "20/20",
+        "client.address": "20/20"
+      },
+      "misses": []
+    }
+  ]
+}

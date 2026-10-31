@@ -2,6 +2,9 @@
 name = "project-name"
 version = "0.1.0"
 requires-python = ">=3.11"
+dependencies = [
+    "google-genai>=2.34.0",
+]
 
 [tool.ruff]
 line-length = 100
@@ -11,3 +14,8 @@ extend-exclude = [".agents", ".claude"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "N", "RUF"]
+
+[dependency-groups]
+dev = [
+    "kaggle>=2.2.5",
+]
