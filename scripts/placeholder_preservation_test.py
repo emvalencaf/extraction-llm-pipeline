@@ -4,12 +4,14 @@ Anonymizes the Validation Set invoices with Ground Truth values (the test target
 the model, not the detector), extracts through a forced tool call, and reports
 the share of Placeholders returned verbatim per format.
 
-Usage: uv run python scripts/placeholder_preservation_test.py [format ...]
+Usage: uv run python scripts/placeholder_preservation_test.py [--shuffle] [format ...]
+--shuffle offsets the Placeholder indices per invoice (control against a memorised token).
 Formats: bracket ([TYPE_n]), angle (<<TYPE_n>>), bare (TYPE_n). Needs GEMINI_API_KEY in .env.
 """
 
 import csv
 import json
+import random
 import sys
 import time
 from pathlib import Path
@@ -67,16 +69,21 @@ def load_env_key() -> str:
     raise SystemExit("GEMINI_API_KEY missing from .env")
 
 
-def anonymize(text: str, gt: dict, fmt: str) -> tuple[str, dict[tuple[str, str], str]]:
+def anonymize(
+    text: str, gt: dict, fmt: str, rng: random.Random | None = None
+) -> tuple[str, dict[tuple[str, str], str]]:
     """Replace the sensitive values; return text and expected placeholder per field."""
     counters: dict[str, int] = {}
+    offsets: dict[str, int] = {}
     by_value: dict[str, str] = {}
     expected: dict[tuple[str, str], str] = {}
 
     def token(kind: str, value: str) -> str:
         if value not in by_value:
             counters[kind] = counters.get(kind, 0) + 1
-            by_value[value] = FORMATS[fmt].format(t=kind, n=counters[kind])
+            # With rng, indices are offset so identical tokens never repeat across invoices.
+            n = counters[kind] + (offsets.setdefault(kind, rng.randint(0, 40)) if rng else 0)
+            by_value[value] = FORMATS[fmt].format(t=kind, n=n)
         return by_value[value]
 
     for party in ("seller", "client"):
@@ -124,13 +131,15 @@ def call(client: genai.Client, text: str) -> dict:
     raise RuntimeError("unreachable")
 
 
-def run(client: genai.Client, fmt: str, rows: list[dict]) -> dict:
+def run(client: genai.Client, fmt: str, rows: list[dict], shuffle: bool = False) -> dict:
     hits = total = 0
     per_field: dict[str, list[int]] = {}
     misses = []
     for row in rows:
         gt = json.loads(row["json_data"])
-        text, expected = anonymize(row["ocred_text"], gt, fmt)
+        text, expected = anonymize(
+            row["ocred_text"], gt, fmt, random.Random(gt["invoice_no"]) if shuffle else None
+        )
         out = call(client, text)
         for (party, key), want in expected.items():
             got = (out.get(party) or {}).get(key)
@@ -161,7 +170,9 @@ def run(client: genai.Client, fmt: str, rows: list[dict]) -> dict:
 
 
 def main() -> None:
-    formats = sys.argv[1:] or list(FORMATS)
+    args = [a for a in sys.argv[1:] if a != "--shuffle"]
+    shuffle = "--shuffle" in sys.argv[1:]
+    formats = args or list(FORMATS)
     manifest = json.loads((ROOT / "data" / "split_manifest.json").read_text(encoding="utf-8"))
     wanted = {e["invoice_no"] for e in manifest["sets"]["validation"]}
     with (ROOT / "data" / "kaggle" / "Batch 1" / "batch_1.csv").open(
@@ -173,10 +184,15 @@ def main() -> None:
     client = genai.Client(api_key=load_env_key())
     results = []
     for fmt in formats:
-        result = run(client, fmt, rows)
+        result = run(client, fmt, rows, shuffle)
+        result["shuffled_indices"] = shuffle
         print(json.dumps({k: v for k, v in result.items() if k != "misses"}, indent=2))
         results.append(result)
-    (ROOT / "data" / "placeholder_test_results.json").write_text(
+    (
+        ROOT
+        / "data"
+        / ("placeholder_test_results_shuffled.json" if shuffle else "placeholder_test_results.json")
+    ).write_text(
         json.dumps({"model": MODEL, "documents": len(rows), "results": results}, indent=2) + "\n",
         encoding="utf-8",
     )

@@ -7,6 +7,15 @@ heading when `development` is released to `master`.
 
 ## [Unreleased]
 
+### Added
+
+- Split Manifest (seed 42, 60/20/20 stratified by line-item count) and its generator
+  `scripts/make_split_manifest.py`.
+- Live Gemini Placeholder preservation test and its write-up in
+  `docs/experiments/gemini-placeholder-preservation.md` (140/140 verbatim on the
+  Validation Set).
+- `kaggle` (dev) and `google-genai` dependencies; `data/kaggle/` is git-ignored.
+
 ## [0.2.0] - 2026-10-23
 
 ### Added
