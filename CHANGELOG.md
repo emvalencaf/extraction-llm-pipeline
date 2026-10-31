@@ -13,6 +13,12 @@ heading when `development` is released to `master`.
   Extraction Schema (Decimal/ISO normalization in code), the `ExtractInvoice`
   pipeline use case, in-process `FakeGemini`, pytest seam-1 tests, import-linter
   layer contracts, and `tests` and `architecture` CI jobs.
+- Pre and post slots (#30): PDF guards (5 MB, 10 pages) ending with a
+  `TerminalReason`, text cleanup, reversible `[TYPE_n]` Anonymization through a
+  Presidio adapter (pattern recognizers for GSTIN, PAN, tax ids, email, phone, bank
+  account, company names and Indian postal addresses, on a blank spaCy pipeline so
+  no model download), an in-memory never-persisted Placeholder map, exact-string
+  Restore and an output guardrail. Tests cover Leak Rate and the round trip.
 
 - Split Manifest (seed 42, 60/20/20 stratified by line-item count) and its generator
   `scripts/make_split_manifest.py`.
