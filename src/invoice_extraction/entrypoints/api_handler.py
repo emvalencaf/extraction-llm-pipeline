@@ -5,6 +5,7 @@ from collections.abc import Callable
 from typing import Any
 
 from invoice_extraction.application.jobs import JobService
+from invoice_extraction.entrypoints.http_events import idempotency_key, path_job_id
 
 Handler = Callable[[dict[str, Any], Any], dict[str, Any]]
 
@@ -21,10 +22,9 @@ def make_api_handler(service: JobService) -> Handler:
     def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         method = event.get("httpMethod")
         if method == "POST" and event.get("path") == "/jobs":
-            headers = {k.lower(): v for k, v in (event.get("headers") or {}).items()}
-            job = service.create(headers.get("idempotency-key") or None)
+            job = service.create(idempotency_key(event))
             return _response(200 if job.pop("replayed", False) else 201, job)
-        job_id = (event.get("pathParameters") or {}).get("job_id")
+        job_id = path_job_id(event)
         if method == "GET" and job_id:
             job = service.get(job_id)
             return _response(200, job) if job else _response(404, {"error": "job not found"})

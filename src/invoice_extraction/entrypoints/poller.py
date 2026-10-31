@@ -16,6 +16,8 @@ from typing import Any
 
 import boto3
 
+from invoice_extraction.composition.queues import jobs_queue_name, queue_url
+
 logger = logging.getLogger(__name__)
 
 Invoke = Callable[[dict[str, Any]], dict[str, Any]]
@@ -98,7 +100,7 @@ def _queue_url(sqs, name: str) -> str:
     """Wait for `init` to create the queue, then return its URL."""
     while True:
         try:
-            return sqs.get_queue_url(QueueName=name)["QueueUrl"]
+            return queue_url(sqs, name)
         except Exception as error:
             logger.info("waiting for queue queue=%s error=%s", name, type(error).__name__)
             time.sleep(2)
@@ -109,7 +111,7 @@ def main() -> None:
     s3_events = boto3.client("sqs", endpoint_url=os.environ["S3_EVENTS_SQS_ENDPOINT_URL"])
     jobs = boto3.client("sqs", endpoint_url=os.environ["JOBS_SQS_ENDPOINT_URL"])
     s3_events_url = _queue_url(s3_events, os.environ.get("S3_EVENTS_QUEUE_NAME", "s3-events"))
-    jobs_url = _queue_url(jobs, os.environ.get("JOBS_QUEUE_NAME", "jobs"))
+    jobs_url = _queue_url(jobs, jobs_queue_name())
     workers = os.environ["WORKER_LAMBDA_URLS"].split(",")  # one RIE container per worker
 
     threads = [

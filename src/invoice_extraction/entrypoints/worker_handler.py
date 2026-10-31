@@ -18,17 +18,31 @@ logger = logging.getLogger(__name__)
 Handler = Callable[[dict[str, Any], Any], dict[str, Any]]
 
 
-def make_worker_handler(service: JobService, delayer: QueueDelayer | None = None) -> Handler:
+def _receive_count(record: dict[str, Any]) -> int:
+    """How many times SQS has delivered this message (1 when the attribute is absent)."""
+    return int(record.get("attributes", {}).get("ApproximateReceiveCount", 1))
+
+
+def _object_key(s3_record: dict[str, Any]) -> str:
+    """The uploaded object's key from an S3 notification record (URL-encoded there)."""
+    return unquote_plus(s3_record["s3"]["object"]["key"])
+
+
+def make_worker_handler(
+    service: JobService,
+    # Optional: in-process tests drive the handler without a queue, and a record without a
+    # receiptHandle has nothing to delay.
+    delayer: QueueDelayer | None = None,
+) -> Handler:
     def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         failures = []
         for record in event.get("Records", []):
-            receive_count = int(record.get("attributes", {}).get("ApproximateReceiveCount", 1))
+            receive_count = _receive_count(record)
             try:
                 notification = json.loads(record["body"])
                 # S3 sends an s3:TestEvent (no Records) when the notification is set up.
                 for s3_record in notification.get("Records", []):
-                    key = unquote_plus(s3_record["s3"]["object"]["key"])
-                    service.process(job_id_from_key(key), receive_count)
+                    service.process(job_id_from_key(_object_key(s3_record)), receive_count)
             except RetryLaterError as retry:
                 if delayer is not None and "receiptHandle" in record:
                     try:

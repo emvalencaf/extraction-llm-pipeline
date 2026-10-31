@@ -22,6 +22,7 @@ from invoice_extraction.adapters.sqs_visibility import SqsVisibility
 from invoice_extraction.application.jobs import JobService
 from invoice_extraction.application.ports import ExtractionModel
 from invoice_extraction.composition.container import build_extract_invoice
+from invoice_extraction.composition.queues import jobs_queue_url
 from invoice_extraction.domain.status import UPLOAD_TTL_SECONDS, RetryPolicy
 
 _PATH_STYLE = Config(s3={"addressing_style": "path"})
@@ -48,6 +49,8 @@ def build_retry_policy() -> RetryPolicy:
 
 def build_job_service() -> JobService:
     s3 = boto3.client("s3", config=_PATH_STYLE)
+    # Optional: only the local stack needs presigned URLs on a host (localhost) other than the
+    # one the containers use; on AWS both are the same endpoint.
     public_endpoint = os.environ.get("S3_PUBLIC_ENDPOINT_URL")
     presigner = (
         boto3.client("s3", endpoint_url=public_endpoint, config=_PATH_STYLE)
@@ -65,8 +68,4 @@ def build_job_service() -> JobService:
 
 def build_queue_delayer() -> SqsVisibility:
     sqs = boto3.client("sqs")
-    url = (
-        os.environ.get("JOBS_QUEUE_URL")
-        or sqs.get_queue_url(QueueName=os.environ.get("JOBS_QUEUE_NAME", "jobs"))["QueueUrl"]
-    )
-    return SqsVisibility(sqs, url)
+    return SqsVisibility(sqs, jobs_queue_url(sqs))

@@ -17,6 +17,8 @@ from typing import Any
 
 from fastapi import FastAPI, Request, Response
 
+from invoice_extraction.entrypoints.http_events import proxy_event
+
 Invoke = Callable[[dict[str, Any]], dict[str, Any]]
 
 _DAY = 24 * 3600
@@ -91,12 +93,7 @@ def create_app(
             return _json(403, "Forbidden")
         if throttled(method):
             return _json(429, "Too Many Requests")
-        event = {
-            "httpMethod": method,
-            "path": path,
-            "pathParameters": path_parameters,
-            "headers": {k.lower(): v for k, v in request.headers.items()},
-        }
+        event = proxy_event(method, path, path_parameters, dict(request.headers))
         with lock:
             result = invoke(event)
         return Response(

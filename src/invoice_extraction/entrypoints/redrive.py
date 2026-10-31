@@ -11,9 +11,11 @@ import time
 
 import boto3
 
+from invoice_extraction.composition.queues import jobs_queue_name, queue_url
+
 
 def _arn(sqs, name: str) -> str:
-    url = sqs.get_queue_url(QueueName=name)["QueueUrl"]
+    url = queue_url(sqs, name)
     return sqs.get_queue_attributes(QueueUrl=url, AttributeNames=["QueueArn"])["Attributes"][
         "QueueArn"
     ]
@@ -41,7 +43,7 @@ def main() -> int:
     task = redrive(
         sqs,
         os.environ.get("DLQ_NAME", "jobs-dlq"),
-        os.environ.get("JOBS_QUEUE_NAME", "jobs"),
+        jobs_queue_name(),
     )
     print(f"redrive {task['Status']}: moved {task.get('ApproximateNumberOfMessagesMoved', 0)}")
     return 0 if task["Status"] in {"COMPLETED", "RUNNING"} else 1
