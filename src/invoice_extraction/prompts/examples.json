@@ -1,20 +1,20 @@
 [
   {
     "invoice_no": "51109309",
-    "text": "Invoice no: 51109309\nDate of issue: 15/04/2023\nSeller: Client:\nTechVision Distributors Pvt Ltd Pune Gadget Zone\nPlot 14, MIDC Industrial Area, Andheri East 67 FC Road\nMumbai, Maharashtra - 400093 Pune, Maharashtra - 411004\nTax Id: 27AABCT1234F1Z5 Tax Id: 405-39-5538\nGSTIN: 27AABCT1234F1Z5\nITEMS\nNo. Description Qty UM Net Price Net Worth VAT % Gross\nWorth\n1. Lenovo Tab P12 Pro 256GB Storm Grey 6.00 pcs 46,537.00 279,222.00 10% 307,144.20\nSUMMARY\nVAT % Net Worth VAT Gross Worth\n10% 279,222.00 27,922.20 307,144.20\nTotal INR 279,222.00 INR 27,922.20 INR 307,144.20",
+    "text": "Invoice no: 51109309\nDate of issue: 15/04/2023\nSeller: Client:\n[NAME_1] [NAME_2]\n[ADDRESS_1] [ADDRESS_2]\n[ADDRESS_3] [ADDRESS_4]\nTax Id: [TAX_ID_1] Tax Id: [TAX_ID_2]\nGSTIN: [TAX_ID_1]\nITEMS\nNo. Description Qty UM Net Price Net Worth VAT % Gross\nWorth\n1. Lenovo Tab P12 Pro 256GB Storm Grey 6.00 pcs 46,537.00 279,222.00 10% 307,144.20\nSUMMARY\nVAT % Net Worth VAT Gross Worth\n10% 279,222.00 27,922.20 307,144.20\nTotal INR 279,222.00 INR 27,922.20 INR 307,144.20",
     "extraction": {
       "invoice_no": "51109309",
       "issue_date": "15/04/2023",
       "currency": "INR",
       "seller": {
-        "name": "TechVision Distributors Pvt Ltd",
-        "address": "Plot 14, MIDC Industrial Area, Andheri East, Mumbai, Maharashtra - 400093",
-        "tax_id": "27AABCT1234F1Z5"
+        "name": "[NAME_1]",
+        "address": "[ADDRESS_1], [ADDRESS_3]",
+        "tax_id": "[TAX_ID_1]"
       },
       "client": {
-        "name": "Pune Gadget Zone",
-        "address": "67 FC Road, Pune, Maharashtra - 411004",
-        "tax_id": "405-39-5538"
+        "name": "[NAME_2]",
+        "address": "[ADDRESS_2], [ADDRESS_4]",
+        "tax_id": "[TAX_ID_2]"
       },
       "items": [
         {
@@ -37,20 +37,20 @@
   },
   {
     "invoice_no": "51109301",
-    "text": "Invoice no: 51109301\nDate of issue: 03/07/2023\nSeller: Client:\nTechVision Distributors Pvt Ltd Raj Electronics Pvt Ltd\nPlot 14, MIDC Industrial Area, Andheri East 42 MG Road\nMumbai, Maharashtra - 400093 Bengaluru, Karnataka - 560001\nTax Id: 27AABCT1234F1Z5 Tax Id: 901-95-4704\nGSTIN: 27AABCT1234F1Z5\nITEMS\nNo. Description Qty UM Net Price Net Worth VAT % Gross\nWorth\n1. Garmin Fenix 7 Solar Multisport GPS 9.00 pcs 74,120.00 667,080.00 10% 733,788.00\n2. Apple Watch Series 9 GPS 45mm 8.00 pcs 52,083.00 416,664.00 10% 458,330.40\nMidnight\n3. Xiaomi 14 Pro 512GB White 8.00 pcs 74,154.00 593,232.00 10% 652,555.20\nSUMMARY\nVAT % Net Worth VAT Gross Worth\n10% 1,676,976.00 167,697.60 1,844,673.60\nINR\nTotal INR 1,676,976.00 INR 1,844,673.60\n167,697.60",
+    "text": "Invoice no: 51109301\nDate of issue: 03/07/2023\nSeller: Client:\n[NAME_1] [NAME_2]\n[ADDRESS_1] [ADDRESS_2]\n[ADDRESS_3] [ADDRESS_4]\nTax Id: [TAX_ID_1] Tax Id: [TAX_ID_2]\nGSTIN: [TAX_ID_1]\nITEMS\nNo. Description Qty UM Net Price Net Worth VAT % Gross\nWorth\n1. Garmin Fenix 7 Solar Multisport GPS 9.00 pcs 74,120.00 667,080.00 10% 733,788.00\n2. Apple Watch Series 9 GPS 45mm 8.00 pcs 52,083.00 416,664.00 10% 458,330.40\nMidnight\n3. Xiaomi 14 Pro 512GB White 8.00 pcs 74,154.00 593,232.00 10% 652,555.20\nSUMMARY\nVAT % Net Worth VAT Gross Worth\n10% 1,676,976.00 167,697.60 1,844,673.60\nINR\nTotal INR 1,676,976.00 INR 1,844,673.60\n167,697.60",
     "extraction": {
       "invoice_no": "51109301",
       "issue_date": "03/07/2023",
       "currency": "INR",
       "seller": {
-        "name": "TechVision Distributors Pvt Ltd",
-        "address": "Plot 14, MIDC Industrial Area, Andheri East, Mumbai, Maharashtra - 400093",
-        "tax_id": "27AABCT1234F1Z5"
+        "name": "[NAME_1]",
+        "address": "[ADDRESS_1], [ADDRESS_3]",
+        "tax_id": "[TAX_ID_1]"
       },
       "client": {
-        "name": "Raj Electronics Pvt Ltd",
-        "address": "42 MG Road, Bengaluru, Karnataka - 560001",
-        "tax_id": "901-95-4704"
+        "name": "[NAME_2]",
+        "address": "[ADDRESS_2], [ADDRESS_4]",
+        "tax_id": "[TAX_ID_2]"
       },
       "items": [
         {
@@ -91,20 +91,20 @@
   },
   {
     "invoice_no": "51109304",
-    "text": "Invoice no: 51109304\nDate of issue: 07/10/2023\nSeller: Client:\nTechVision Distributors Pvt Ltd Chennai Digital Store\nPlot 14, MIDC Industrial Area, Andheri East 23 Anna Salai\nMumbai, Maharashtra - 400093 Chennai, Tamil Nadu - 600002\nTax Id: 27AABCT1234F1Z5 Tax Id: 235-81-3906\nGSTIN: 27AABCT1234F1Z5\nITEMS\nNo. Description Qty UM Net Price Net Worth VAT % Gross\nWorth\n1. GoPro Hero 12 Black Action Camera 1.00 pcs 37,281.00 37,281.00 10% 41,009.10\n2. Boat Rockerz 550 Bluetooth Headphones 4.00 pcs 2,422.00 9,688.00 10% 10,656.80\n3. Western Digital 2TB My Passport HDD 10.00 pcs 6,176.00 61,760.00 10% 67,936.00\n4. DJI Mini 3 Pro Fly More Combo Drone 6.00 pcs 106,805.00 640,830.00 10% 704,913.00\n5. Samsung Galaxy Tab S9 256GB 7.00 pcs 70,974.00 496,818.00 10% 546,499.80\nGraphite\n6. Vivo X100 Pro 256GB Asteroid Black 6.00 pcs 76,281.00 457,686.00 10% 503,454.60\nSUMMARY\nVAT % Net Worth VAT Gross Worth\n10% 1,704,063.00 170,406.30 1,874,469.30\nINR\nTotal INR 1,704,063.00 INR 1,874,469.30\n170,406.30",
+    "text": "Invoice no: 51109304\nDate of issue: 07/10/2023\nSeller: Client:\n[NAME_1] [NAME_2]\n[ADDRESS_1] [ADDRESS_2]\n[ADDRESS_3] [ADDRESS_4]\nTax Id: [TAX_ID_1] Tax Id: [TAX_ID_2]\nGSTIN: [TAX_ID_1]\nITEMS\nNo. Description Qty UM Net Price Net Worth VAT % Gross\nWorth\n1. GoPro Hero 12 Black Action Camera 1.00 pcs 37,281.00 37,281.00 10% 41,009.10\n2. Boat Rockerz 550 Bluetooth Headphones 4.00 pcs 2,422.00 9,688.00 10% 10,656.80\n3. Western Digital 2TB My Passport HDD 10.00 pcs 6,176.00 61,760.00 10% 67,936.00\n4. DJI Mini 3 Pro Fly More Combo Drone 6.00 pcs 106,805.00 640,830.00 10% 704,913.00\n5. Samsung Galaxy Tab S9 256GB 7.00 pcs 70,974.00 496,818.00 10% 546,499.80\nGraphite\n6. Vivo X100 Pro 256GB Asteroid Black 6.00 pcs 76,281.00 457,686.00 10% 503,454.60\nSUMMARY\nVAT % Net Worth VAT Gross Worth\n10% 1,704,063.00 170,406.30 1,874,469.30\nINR\nTotal INR 1,704,063.00 INR 1,874,469.30\n170,406.30",
     "extraction": {
       "invoice_no": "51109304",
       "issue_date": "07/10/2023",
       "currency": "INR",
       "seller": {
-        "name": "TechVision Distributors Pvt Ltd",
-        "address": "Plot 14, MIDC Industrial Area, Andheri East, Mumbai, Maharashtra - 400093",
-        "tax_id": "27AABCT1234F1Z5"
+        "name": "[NAME_1]",
+        "address": "[ADDRESS_1], [ADDRESS_3]",
+        "tax_id": "[TAX_ID_1]"
       },
       "client": {
-        "name": "Chennai Digital Store",
-        "address": "23 Anna Salai, Chennai, Tamil Nadu - 600002",
-        "tax_id": "235-81-3906"
+        "name": "[NAME_2]",
+        "address": "[ADDRESS_2], [ADDRESS_4]",
+        "tax_id": "[TAX_ID_2]"
       },
       "items": [
         {

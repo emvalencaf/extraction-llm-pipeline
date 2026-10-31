@@ -9,6 +9,18 @@ heading when `development` is released to `master`.
 
 ### Added
 
+- Follow-ups to #29: few-shot examples are now anonymized with the same detector and
+  `[TYPE_n]` placeholders real inputs get (`scripts/build_fewshots.py`, regenerated
+  `examples.json`; a test checks no detected identifier remains). All three models run
+  at temperature 0, including `gemini-3.8-flash`. Evidence (checked 2026-10-31): Google's
+  Gemini 3 guide (https://ai.google.dev/gemini-api/docs/gemini-3) recommends keeping
+  temperature at the default 1.0 and warns that lower values "may lead to unexpected
+  behavior, such as looping or degraded performance"; it does not say the API rejects
+  other values, and no source found says so. No live API call was made, so acceptance
+  is unconfirmed: if the API returns a 400, set `temperature` back to `null` in
+  `prompts/settings.json`. The Prompt Version changes. `composition/runtime.py` uses
+  the real Gemini adapter when `GEMINI_API_KEY` is set, else `FAKE_GEMINI_URL`.
+
 - Walking skeleton (#28): hexagonal package `src/invoice_extraction/` with the
   Extraction Schema (Decimal/ISO normalization in code), the `ExtractInvoice`
   pipeline use case, in-process `FakeGemini`, pytest seam-1 tests, import-linter

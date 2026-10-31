@@ -179,15 +179,15 @@ def test_exhausted_repair_escalates_to_the_quality_model():
     assert model.models_called() == [PRIMARY] * 3 + [ESCALATION]
 
 
-def test_escalation_model_is_called_without_a_temperature():
-    assert BUNDLE.escalation.temperature is None
+def test_escalation_model_is_called_with_temperature_zero():
     model = FakeGemini(
         reply=lambda request: raw_extraction() if request.model == ESCALATION else invalid()
     )
 
     run(model)
 
-    assert model.calls[-1].temperature is None
+    assert model.calls[-1].model == ESCALATION
+    assert model.calls[-1].temperature == 0
 
 
 def test_exhausted_repair_and_escalation_ends_as_failed_validation():
