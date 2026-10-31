@@ -22,6 +22,12 @@ heading when `development` is released to `master`.
 - Redrive and final-state rules and a `RetryPolicy` (defaults in one place, built once
   from the environment) live in `domain/status.py`; the `idem#` key scheme stays in the
   DynamoDB adapter; handlers and the poller log through `logging` without invoice content.
+- Review smells (#27), no behavior change: jobs are a typed `Job` dataclass and status
+  changes take a typed `JobUpdate` instead of `**fields: Any`; the worker handler parses
+  the receive count and S3 key in small helpers; queue-name/URL handling
+  (`composition/queues.py`) and API proxy-event parsing (`entrypoints/http_events.py`) are
+  shared instead of duplicated; `JobService.jobs` is private; optional collaborators
+  (`delayer`, `presign_client`, `S3_PUBLIC_ENDPOINT_URL`) are kept and now say why.
 
 ### Added
 
