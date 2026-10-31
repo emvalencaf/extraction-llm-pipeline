@@ -5,6 +5,7 @@ from collections.abc import Callable
 from invoice_extraction.adapters.bundle_loader import load_bundle
 from invoice_extraction.adapters.presidio_detector import PresidioDetector
 from invoice_extraction.adapters.pypdf_reader import PypdfTextReader
+from invoice_extraction.application.observability import EventSink
 from invoice_extraction.application.pipeline import ExtractInvoice, RetryPolicy
 from invoice_extraction.application.ports import ExtractionModel, SensitiveDetector
 from invoice_extraction.application.post_slot import PostSlot
@@ -31,6 +32,7 @@ def build_extract_invoice(
     max_repairs: int = 2,
     sleep: Callable[[float], None] | None = None,
     rng: Callable[[], float] | None = None,
+    sink: EventSink | None = None,
 ) -> ExtractInvoice:
     reader = PypdfTextReader()
     pre = PreSlot(reader=reader, pages=reader, detector=detector or _default_detector())
@@ -45,6 +47,7 @@ def build_extract_invoice(
         post=PostSlot(),
         bundle=bundle or load_bundle(),
         retry=retry,
+        sink=sink,
         max_repairs=max_repairs,
         **options,
     )

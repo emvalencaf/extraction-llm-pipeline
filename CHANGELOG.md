@@ -26,6 +26,13 @@ heading when `development` is released to `master`.
   and post slots as nodes, primary, fallback and escalation models, a validation
   repair loop and jittered transient retries. `temperature` is omitted per model where
   unsupported. `FakeGemini` gains model-targeted failure injection (`inject`).
+- Observability (#31): runtime Grounding Rate over non-anonymized fields (informational,
+  never blocking) on `PipelineResult` and the `job` event; one `llm_call` wide event
+  per Gemini call and one `job` event per job, through an `EventSink` port with a
+  `JsonEventSink` adapter (one JSON line each, EMF metrics without dimensions). Events
+  carry ids, counts, timings and field paths only; a test checks no invoice content
+  reaches any log line. `ExtractionModel.extract` now returns a `ModelReply` with token
+  usage.
 - `domain/ground_truth.py`: one pure function mapping a Kaggle ground-truth record to
   an Extraction Schema shaped dict, reused for few-shots
   (`scripts/build_fewshots.py`) and, later, the regression gate.

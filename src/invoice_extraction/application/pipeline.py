@@ -21,11 +21,19 @@ from typing import Any, TypedDict
 from langgraph.graph import END, START, StateGraph
 from pydantic import ValidationError
 
+from invoice_extraction.application.grounding import GroundingRate, grounding_rate
+from invoice_extraction.application.observability import (
+    EventSink,
+    JobEvent,
+    LlmCallEvent,
+    NullSink,
+)
 from invoice_extraction.application.ports import (
     Example,
     ExtractionModel,
     ExtractionRequest,
     ModelRejectedError,
+    ModelReply,
     ModelUnavailableError,
     Repair,
     TransientModelError,
@@ -45,6 +53,7 @@ class PipelineResult:
     reason: TerminalReason | None = None
     prompt_version: str | None = None
     model: str | None = None
+    grounding: GroundingRate | None = None  # informational; never blocks
 
 
 @dataclass(frozen=True)
@@ -56,7 +65,21 @@ class RetryPolicy:
     max_delay: float = 8.0
 
 
+@dataclass
+class _Run:
+    """Counters for the `job` wide event; mutated by the nodes of one run."""
+
+    job_id: str | None = None
+    llm_calls: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    repairs: int = 0
+    escalated: bool = False
+    fell_back: bool = False
+
+
 class _State(TypedDict, total=False):
+    run: _Run
     pdf: bytes
     prepared: Prepared
     tier: str  # primary | fallback | escalation
@@ -83,6 +106,8 @@ class ExtractInvoice:
         max_repairs: int = 2,
         sleep: Callable[[float], None] = time.sleep,
         rng: Callable[[], float] = random.random,
+        sink: EventSink | None = None,
+        clock: Callable[[], float] = time.perf_counter,
     ) -> None:
         self._pre = pre
         self._model = model
@@ -92,12 +117,52 @@ class ExtractInvoice:
         self._max_repairs = max_repairs
         self._sleep = sleep
         self._rng = rng
+        self._sink = sink or NullSink()
+        self._clock = clock
         self._schema = model_schema()
         self.graph = self._build_graph()
 
-    def __call__(self, pdf: bytes) -> PipelineResult:
-        state = self.graph.invoke({"pdf": pdf, "tier": "primary", "repairs_used": 0})
-        return replace(state["result"], prompt_version=self._bundle.version)
+    def __call__(self, pdf: bytes, job_id: str | None = None) -> PipelineResult:
+        run = _Run(job_id=job_id)
+        started = self._clock()
+        try:
+            state = self.graph.invoke(
+                {"pdf": pdf, "tier": "primary", "repairs_used": 0, "run": run}
+            )
+        except ModelUnavailableError:
+            self._emit_job(run, started, "unavailable")
+            raise
+        except Exception:
+            self._emit_job(run, started, "error")
+            raise
+        result = replace(state["result"], prompt_version=self._bundle.version)
+        self._emit_job(run, started, result.status.value, result)
+        return result
+
+    def _emit_job(
+        self, run: _Run, started: float, outcome: str, result: PipelineResult | None = None
+    ) -> None:
+        grounding = result.grounding if result else None
+        self._sink.emit(
+            JobEvent(
+                outcome=outcome,
+                duration_ms=(self._clock() - started) * 1000,
+                prompt_version=self._bundle.version,
+                llm_calls=run.llm_calls,
+                input_tokens=run.input_tokens,
+                output_tokens=run.output_tokens,
+                repairs=run.repairs,
+                escalated=run.escalated,
+                fell_back=run.fell_back,
+                model=result.model if result else None,
+                reason=result.reason.value if result and result.reason else None,
+                job_id=run.job_id,
+                grounding_rate=grounding.rate if grounding else None,
+                grounded_fields=grounding.grounded if grounding else None,
+                total_fields=grounding.total if grounding else None,
+                ungrounded_fields=grounding.ungrounded if grounding else (),
+            )
+        )
 
     # --- graph ---------------------------------------------------------------------
 
@@ -105,7 +170,7 @@ class ExtractInvoice:
         graph = StateGraph(_State)
         graph.add_node("pre", self._pre_node)
         graph.add_node("call", self._call_node)
-        graph.add_node("fall_back", lambda state: {"tier": "fallback"})
+        graph.add_node("fall_back", self._fall_back_node)
         graph.add_node("post", self._post_node)
         graph.add_node("validate", self._validate_node)
         graph.add_node("repair", self._repair_node)
@@ -127,6 +192,11 @@ class ExtractInvoice:
         graph.add_edge("give_up", END)
         graph.add_edge("unavailable", END)
         return graph.compile()
+
+    @staticmethod
+    def _fall_back_node(state: _State) -> _State:
+        state["run"].fell_back = True
+        return {"tier": "fallback"}
 
     def _setting(self, tier: str) -> ModelSetting:
         return getattr(self._bundle, tier)
@@ -157,19 +227,53 @@ class ExtractInvoice:
             repair=state.get("repair"),
         )
         for attempt in range(self._retry.max_attempts):
+            started = self._clock()
             try:
-                raw = self._model.extract(request)
+                reply = self._model.extract(request)
             except ModelRejectedError:
+                self._record_call(state, request, attempt, "rejected", started)
                 break
             except TransientModelError:
+                self._record_call(state, request, attempt, "transient_error", started)
                 if attempt + 1 < self._retry.max_attempts:
                     self._sleep(self._backoff(attempt))
             else:
-                return {"raw": raw, "call_ok": True, "model": setting.name}
+                self._record_call(state, request, attempt, "ok", started, reply)
+                return {"raw": reply.data, "call_ok": True, "model": setting.name}
         if state["tier"] == "escalation":
             # the quality model is a bonus: its outage ends the job as a validation failure
             return {"call_ok": False, "result": self._schema_invalid(state)}
         return {"call_ok": False}
+
+    def _record_call(
+        self,
+        state: _State,
+        request: ExtractionRequest,
+        attempt: int,
+        outcome: str,
+        started: float,
+        reply: ModelReply | None = None,
+    ) -> None:
+        run = state["run"]
+        run.llm_calls += 1
+        input_tokens = reply.input_tokens if reply else None
+        output_tokens = reply.output_tokens if reply else None
+        run.input_tokens += input_tokens or 0
+        run.output_tokens += output_tokens or 0
+        self._sink.emit(
+            LlmCallEvent(
+                model=request.model,
+                tier=state["tier"],
+                attempt=attempt + 1,
+                repair=request.repair is not None,
+                outcome=outcome,
+                latency_ms=(self._clock() - started) * 1000,
+                prompt_version=self._bundle.version,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                job_id=run.job_id,
+            )
+        )
 
     @staticmethod
     def _schema_invalid(state: _State) -> PipelineResult:
@@ -220,7 +324,10 @@ class ExtractInvoice:
             return {"errors": messages}
         return {
             "result": PipelineResult(
-                JobStatus.SUCCEEDED, extraction=extraction, model=state["model"]
+                JobStatus.SUCCEEDED,
+                extraction=extraction,
+                model=state["model"],
+                grounding=grounding_rate(state["restored"], state["prepared"].text),
             )
         }
 
@@ -239,10 +346,12 @@ class ExtractInvoice:
             previous=state["raw"],
             errors=tuple(state["errors"]),
         )
+        state["run"].repairs += 1
         return {"repair": repair, "repairs_used": state["repairs_used"] + 1}
 
     @staticmethod
     def _escalate_node(state: _State) -> _State:
+        state["run"].escalated = True
         return {"tier": "escalation", "escalated": True, "repairs_used": 0, "repair": None}
 
     @staticmethod
