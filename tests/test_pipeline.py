@@ -27,10 +27,10 @@ def test_model_receives_the_pdf_text_and_a_schema_covering_every_field():
 
     build_extract_invoice(model)(invoice_pdf())
 
-    ((text, schema),) = model.calls
-    assert "51109301" in text
-    assert set(schema["properties"]) == set(raw_extraction())
-    assert "tax_id" in schema["$defs"]["Party"]["properties"]
+    (request,) = model.calls
+    assert "51109301" in request.text
+    assert set(request.schema["properties"]) == set(raw_extraction())
+    assert "tax_id" in request.schema["$defs"]["Party"]["properties"]
 
 
 def test_unparseable_amount_is_a_terminal_validation_failure():

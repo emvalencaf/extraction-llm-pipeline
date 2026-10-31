@@ -44,7 +44,7 @@ def copying_reply(text: str, overrides: dict | None = None) -> dict:
 
 
 def model(**overrides) -> FakeGemini:
-    return FakeGemini(reply=lambda text: copying_reply(text, overrides))
+    return FakeGemini(reply=lambda request: copying_reply(request.text, overrides))
 
 
 def test_model_never_sees_a_sensitive_value():
@@ -52,8 +52,8 @@ def test_model_never_sees_a_sensitive_value():
 
     build_extract_invoice(fake)(pdf_of(TWO_COLUMN_TEXT))
 
-    ((seen, _),) = fake.calls
-    assert leak_rate([(seen, SENSITIVE_VALUES)]) == 0.0
+    (request,) = fake.calls
+    assert leak_rate([(request.text, SENSITIVE_VALUES)]) == 0.0
 
 
 def test_placeholders_are_restored_into_the_extraction():

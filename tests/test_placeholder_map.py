@@ -62,5 +62,5 @@ def test_model_receives_cleaned_text():
 
     build_extract_invoice(model)(make_pdf(["Invoice   no:\t1", "", "Total   5"]))
 
-    ((text, _),) = model.calls
-    assert text == "Invoice no: 1\nTotal 5"
+    (request,) = model.calls
+    assert request.text == "Invoice no: 1\nTotal 5"

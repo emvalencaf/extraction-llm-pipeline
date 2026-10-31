@@ -19,6 +19,21 @@ heading when `development` is released to `master`.
   account, company names and Indian postal addresses, on a blank spaCy pipeline so
   no model download), an in-memory never-persisted Placeholder map, exact-string
   Restore and an output guardrail. Tests cover Leak Rate and the round trip.
+- Gemini extraction (#29): `GeminiExtractionModel` adapter; a Prompt Bundle (system
+  prompt, repair prompt, model settings, static Train Set few-shots) shipped in
+  `src/invoice_extraction/prompts/` and versioned by content hash, attached to every
+  `PipelineResult`; the pipeline is now a LangGraph graph (no checkpointer) with pre
+  and post slots as nodes, primary, fallback and escalation models, a validation
+  repair loop and jittered transient retries. `temperature` is omitted per model where
+  unsupported. `FakeGemini` gains model-targeted failure injection (`inject`).
+- `domain/ground_truth.py`: one pure function mapping a Kaggle ground-truth record to
+  an Extraction Schema shaped dict, reused for few-shots
+  (`scripts/build_fewshots.py`) and, later, the regression gate.
+
+### Changed
+
+- `ExtractionModel.extract` takes an `ExtractionRequest`; `ExtractInvoice` takes a
+  `PromptBundle`; `build_extract_invoice` accepts retry, repair, sleep and rng options.
 
 - Split Manifest (seed 42, 60/20/20 stratified by line-item count) and its generator
   `scripts/make_split_manifest.py`.
