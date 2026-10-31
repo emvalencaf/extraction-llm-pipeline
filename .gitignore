@@ -27,3 +27,12 @@ graphify-out/
 
 # Downloaded Kaggle dataset (fixture, never committed)
 data/kaggle/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+infra/backend.hcl
+infra/*.auto.tfvars
+infra/terraform.tfvars
