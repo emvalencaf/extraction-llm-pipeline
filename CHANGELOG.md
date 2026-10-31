@@ -44,6 +44,15 @@ heading when `development` is released to `master`.
   timings are read from `LLM_MAX_ATTEMPTS`, `LLM_BACKOFF_BASE_SECONDS` and
   `LLM_BACKOFF_CAP_SECONDS`; compose compresses them with the queue and upload TTL timings.
   The demo prints scenarios 1, 2, 4 and 5 as a timeline.
+- Regression gate (#35): `scripts/regression_gate.py` runs the real graph on the Test Set
+  (temperature 0, model calls paced to 12 RPM, key of its own Google project in
+  `GATE_GEMINI_API_KEY`), scores deterministic assayer metrics (per field, line items,
+  all-correct rate; no judge) and compares with the committed `data/baseline.json`. It fails
+  on a regression of more than one document, below the absolute floor, or on an inconclusive
+  run (quota errors, missing results), writes a Markdown report for the sticky PR comment and
+  updates the baseline with `--update-baseline`. Verdict logic is `domain/gate.py`; the three
+  required assayer changes are listed in `docs/assayer-required-changes.md`. The first
+  baseline still has to be recorded with a live run.
 - Terraform core and image packaging (#36): `infra/` with a `bootstrap/` stack (S3 state
   bucket) and modules `storage`, `queue` (jobs queue, DLQ with 5 receives, S3 notification
   policy), `jobs-table`, `registry` (ECR), `secrets` (SSM SecureString for the Gemini key),
