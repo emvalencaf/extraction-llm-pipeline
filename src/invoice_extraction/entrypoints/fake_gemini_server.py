@@ -61,7 +61,7 @@ def create_app() -> FastAPI:
                 schema=payload["schema"],
                 system_prompt="",
             )
-        )
+        ).data
 
     @app.put("/control/reply")
     def set_reply(new_reply: dict[str, Any]) -> dict[str, str]:

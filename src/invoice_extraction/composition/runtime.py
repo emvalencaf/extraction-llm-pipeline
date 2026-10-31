@@ -12,6 +12,7 @@ from botocore.config import Config
 
 from invoice_extraction.adapters.dynamo_jobs import DynamoJobRepository
 from invoice_extraction.adapters.http_model import HttpExtractionModel
+from invoice_extraction.adapters.json_events import JsonEventSink
 from invoice_extraction.adapters.s3_blobs import S3BlobStore
 from invoice_extraction.application.jobs import JobService
 from invoice_extraction.composition.container import build_extract_invoice
@@ -30,5 +31,7 @@ def build_job_service() -> JobService:
     return JobService(
         jobs=DynamoJobRepository(boto3.resource("dynamodb").Table(os.environ["JOBS_TABLE"])),
         blobs=S3BlobStore(s3, os.environ["BUCKET"], presign_client=presigner),
-        extract=build_extract_invoice(HttpExtractionModel(os.environ["FAKE_GEMINI_URL"])),
+        extract=build_extract_invoice(
+            HttpExtractionModel(os.environ["FAKE_GEMINI_URL"]), sink=JsonEventSink()
+        ),
     )
