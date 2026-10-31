@@ -54,6 +54,8 @@ class GateRun:
 
     def field_means(self) -> dict[str, float]:
         scored = [d.field_scores for d in self.documents if d.conclusive]
+        if not scored:
+            return {}
         names = sorted({name for scores in scored for name in scores})
         return {
             name: round(sum(s.get(name, 0.0) for s in scored) / len(scored), 4) for name in names
@@ -138,7 +140,10 @@ def evaluate(baseline: Baseline, run: GateRun) -> Verdict:
     rate = run.all_correct / run.expected_documents
     if rate < baseline.floor:
         reasons.append(
-            (GateStatus.FLOOR, f"all-correct rate {rate:.0%} is below the floor {baseline.floor:.0%}")
+            (
+                GateStatus.FLOOR,
+                f"all-correct rate {rate:.0%} is below the floor {baseline.floor:.0%}",
+            )
         )
     dropped = baseline.all_correct - run.all_correct
     if dropped > baseline.max_regression:
@@ -174,7 +179,12 @@ def render_report(baseline: Baseline, run: GateRun, verdict: Verdict) -> str:
         lines.append("")
     means = run.field_means()
     if means:
-        lines += ["### Per-field score", "", "| Field | Baseline | Run | Delta |", "|---|---|---|---|"]
+        lines += [
+            "### Per-field score",
+            "",
+            "| Field | Baseline | Run | Delta |",
+            "|---|---|---|---|",
+        ]
         for name in sorted(set(means) | set(baseline.field_scores)):
             before, after = baseline.field_scores.get(name), means.get(name)
             delta = "" if before is None or after is None else f"{after - before:+.4f}"

@@ -8,8 +8,8 @@ import pytest
 
 pytest.importorskip("assayer")
 
-from invoice_extraction.adapters.assayer_scoring import score_document  # noqa: E402
-from invoice_extraction.domain.ground_truth import ground_truth_to_extraction  # noqa: E402
+from invoice_extraction.adapters.assayer_scoring import score_document
+from invoice_extraction.domain.ground_truth import ground_truth_to_extraction
 
 FIXTURE = Path(__file__).parent / "fixtures" / "ground_truth_51109301.json"
 

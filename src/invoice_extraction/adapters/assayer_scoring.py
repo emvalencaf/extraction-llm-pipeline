@@ -23,7 +23,11 @@ FIELD_MAP: dict[str, Any] = {
     "invoice_no": _TEXT,
     "issue_date": ["exact_match"],
     "currency": ["exact_match"],
-    **{f"{side}.{name}": metrics for side in ("seller", "client") for name, metrics in _PARTY.items()},
+    **{
+        f"{side}.{name}": metrics
+        for side in ("seller", "client")
+        for name, metrics in _PARTY.items()
+    },
     "totals.vat_pct": _AMOUNT,
     "totals.net_amount": _AMOUNT,
     "totals.vat_amount": _AMOUNT,
@@ -46,7 +50,9 @@ FIELD_MAP: dict[str, Any] = {
 
 def canonical(extraction: dict[str, Any] | Extraction) -> dict[str, Any]:
     """Normalized, JSON-comparable form: amounts as floats, dates as ISO strings."""
-    model = extraction if isinstance(extraction, Extraction) else Extraction.model_validate(extraction)
+    model = (
+        extraction if isinstance(extraction, Extraction) else Extraction.model_validate(extraction)
+    )
     data = model.model_dump(mode="json")  # Decimal and date become strings
 
     def numbers(node: Any, key: str | None = None) -> Any:
@@ -78,9 +84,7 @@ def score_document(
         Dataset("invoices", [case])
     )
     if experiment.failures:
-        return DocumentOutcome(
-            invoice_no, False, note=f"scoring failed: {experiment.failures[0]}"
-        )
+        return DocumentOutcome(invoice_no, False, note=f"scoring failed: {experiment.failures[0]}")
     scores: dict[str, float] = {}
     for field_name, field_scores in experiment.scores_by_field().items():
         for score in field_scores:
