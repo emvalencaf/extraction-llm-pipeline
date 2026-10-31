@@ -57,9 +57,18 @@ class ExtractionRequest:
     repair: Repair | None = None
 
 
+@dataclass(frozen=True)
+class ModelReply:
+    """What a model call returned: the raw data and the token usage it reports."""
+
+    data: dict[str, Any]
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+
+
 class ExtractionModel(Protocol):
-    def extract(self, request: ExtractionRequest) -> dict[str, Any]:
-        """Return the raw (unvalidated) Extraction the model produced.
+    def extract(self, request: ExtractionRequest) -> ModelReply:
+        """Return the raw (unvalidated) Extraction the model produced, with token usage.
 
         Raise TransientModelError for retryable failures (429, 5xx) and
         ModelRejectedError for failures a retry cannot fix.

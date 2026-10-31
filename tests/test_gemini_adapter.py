@@ -30,7 +30,8 @@ class StubClient:
         self.sent.append({"model": model, "contents": contents, "config": config})
         if self._error:
             raise self._error
-        return SimpleNamespace(text=self._text)
+        usage = SimpleNamespace(prompt_token_count=11, candidates_token_count=7)
+        return SimpleNamespace(text=self._text, usage_metadata=usage)
 
 
 def request(**changes) -> ExtractionRequest:
@@ -46,7 +47,13 @@ def request(**changes) -> ExtractionRequest:
 
 
 def test_returns_the_json_the_model_produced():
-    assert GeminiExtractionModel(StubClient()).extract(request()) == raw_extraction()
+    assert GeminiExtractionModel(StubClient()).extract(request()).data == raw_extraction()
+
+
+def test_reports_the_token_usage_of_the_call():
+    reply = GeminiExtractionModel(StubClient()).extract(request())
+
+    assert (reply.input_tokens, reply.output_tokens) == (11, 7)
 
 
 def test_sends_prompt_schema_examples_and_text():

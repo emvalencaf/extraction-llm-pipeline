@@ -1,8 +1,8 @@
 """Wire the job service from environment variables (the only configuration channel).
 
 Variables: JOBS_TABLE, BUCKET, GEMINI_API_KEY (real Gemini adapter; wins when set) or
-FAKE_GEMINI_URL (HTTP model service otherwise), optional S3_PUBLIC_ENDPOINT_URL (host named in presigned URLs). boto3 itself honors
-AWS_ENDPOINT_URL_<SERVICE>, AWS_REGION and the credentials variables.
+FAKE_GEMINI_URL (HTTP model service otherwise), optional S3_PUBLIC_ENDPOINT_URL (host
+named in presigned URLs). boto3 itself honors AWS_ENDPOINT_URL_<SERVICE>, AWS_REGION and the credentials variables.
 """
 
 import os
@@ -14,6 +14,7 @@ from google import genai
 from invoice_extraction.adapters.dynamo_jobs import DynamoJobRepository
 from invoice_extraction.adapters.gemini import GeminiExtractionModel
 from invoice_extraction.adapters.http_model import HttpExtractionModel
+from invoice_extraction.adapters.json_events import JsonEventSink
 from invoice_extraction.adapters.s3_blobs import S3BlobStore
 from invoice_extraction.application.jobs import JobService
 from invoice_extraction.application.ports import ExtractionModel
@@ -41,5 +42,5 @@ def build_job_service() -> JobService:
     return JobService(
         jobs=DynamoJobRepository(boto3.resource("dynamodb").Table(os.environ["JOBS_TABLE"])),
         blobs=S3BlobStore(s3, os.environ["BUCKET"], presign_client=presigner),
-        extract=build_extract_invoice(build_model()),
+        extract=build_extract_invoice(build_model(), sink=JsonEventSink()),
     )

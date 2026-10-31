@@ -8,6 +8,7 @@ from google.genai import errors, types
 from invoice_extraction.application.ports import (
     ExtractionRequest,
     ModelRejectedError,
+    ModelReply,
     TransientModelError,
 )
 
@@ -37,7 +38,7 @@ class GeminiExtractionModel:
     def __init__(self, client: Any) -> None:
         self._client = client
 
-    def extract(self, request: ExtractionRequest) -> dict[str, Any]:
+    def extract(self, request: ExtractionRequest) -> ModelReply:
         config = types.GenerateContentConfig(
             system_instruction=request.system_prompt,
             response_mime_type="application/json",
@@ -53,7 +54,13 @@ class GeminiExtractionModel:
             if error.code in _TRANSIENT_CODES:
                 raise TransientModelError(f"{error.code}: {error}") from error
             raise ModelRejectedError(f"{error.code}: {error}") from error
+        usage = getattr(response, "usage_metadata", None)
         try:
-            return json.loads(response.text)
+            data = json.loads(response.text)
         except (TypeError, ValueError) as error:
             raise TransientModelError("model reply was not valid JSON") from error
+        return ModelReply(
+            data,
+            input_tokens=getattr(usage, "prompt_token_count", None),
+            output_tokens=getattr(usage, "candidates_token_count", None),
+        )
