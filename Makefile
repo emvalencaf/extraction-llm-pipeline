@@ -27,6 +27,7 @@ redrive: ## Replay the DLQ with native SQS redrive (stack must be up)
 		python -m invoice_extraction.entrypoints.redrive
 
 test-compose: ## Failure-injection suite (11 scenarios) on a fresh local stack, then stop it
+	$(MAKE) stack-down
 	$(MAKE) stack-up
 	$(MAKE) stack-wait
 	uv run pytest tests/compose -m compose; status=$$?; \
