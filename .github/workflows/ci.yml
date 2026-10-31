@@ -36,6 +36,22 @@ jobs:
             uv run .agents/skills/wiki-okf-validate/scripts/okf_validate.py .wiki --strict
           fi
 
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv run pytest
+
+  architecture:
+    name: Import layers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv run lint-imports
+
   commits:
     name: Commit messages
     runs-on: ubuntu-latest

@@ -1,0 +1,103 @@
+# Token-free local stack: no AWS or Gemini credentials needed (all keys are "test").
+# Start with `make stack-up`. API on http://localhost:8080, moto S3 on :5000.
+# Configuration is by environment variables only.
+
+x-aws: &aws
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
+  AWS_REGION: us-east-1
+  AWS_DEFAULT_REGION: us-east-1
+  AWS_ENDPOINT_URL_S3: http://moto:5000
+  AWS_ENDPOINT_URL_DYNAMODB: http://dynamodb:8000
+  S3_EVENTS_SQS_ENDPOINT_URL: http://moto:5000
+  JOBS_SQS_ENDPOINT_URL: http://elasticmq:9324
+
+x-lambda-env: &lambda-env
+  <<: *aws
+  JOBS_TABLE: jobs
+  AWS_ENDPOINT_URL_SQS: http://elasticmq:9324
+  # Queue behavior with compressed timings (production: 5 receives, 30 s base, 900 s cap).
+  MAX_RECEIVES: "5"
+  RETRY_BASE_SECONDS: "2"
+  RETRY_CAP_SECONDS: "8"
+  BUCKET: invoices
+  FAKE_GEMINI_URL: http://fake-gemini:8000
+  # Presigned PUT URLs are used from the host, not from inside the network.
+  S3_PUBLIC_ENDPOINT_URL: http://localhost:5000
+
+x-lambda: &lambda
+  build:
+    context: .
+    dockerfile: docker/lambda.Dockerfile
+  image: invoice-extraction-lambda
+  environment: *lambda-env
+  depends_on:
+    - fake-gemini
+
+x-tools: &tools
+  build:
+    context: .
+    dockerfile: docker/tools.Dockerfile
+  image: invoice-extraction-tools
+
+services:
+  dynamodb:
+    image: amazon/dynamodb-local:latest
+    command: -jar DynamoDBLocal.jar -inMemory -sharedDb
+
+  moto:
+    image: motoserver/moto:latest
+    ports: ["5000:5000"]
+
+  elasticmq:
+    image: softwaremill/elasticmq:1.6.12
+
+  fake-gemini:
+    <<: *tools
+    command: uvicorn invoice_extraction.entrypoints.fake_gemini_server:app --host 0.0.0.0 --port 8000
+    ports: ["8001:8000"]
+
+  init:
+    <<: *tools
+    depends_on: [moto, dynamodb, elasticmq]
+    environment:
+      <<: *aws
+      VISIBILITY_TIMEOUT: "15"  # production: >= 6x the Lambda timeout
+    # The emulators need a moment to listen; retry until init succeeds.
+    command: sh -c "until python -m invoice_extraction.entrypoints.init_resources; do sleep 2; done"
+    restart: "no"
+
+  # One RIE container per concurrent worker: RIE cannot take simultaneous invokes.
+  api-lambda:
+    <<: *lambda
+  worker-1:
+    <<: *lambda
+    command: ["invoice_extraction.entrypoints.worker_handler.handler"]
+  worker-2:
+    <<: *lambda
+    command: ["invoice_extraction.entrypoints.worker_handler.handler"]
+
+  poller:
+    <<: *tools
+    depends_on: [init, worker-1, worker-2]
+    environment:
+      <<: *aws
+      WORKER_LAMBDA_URLS: >-
+        http://worker-1:8080/2015-03-31/functions/function/invocations,
+        http://worker-2:8080/2015-03-31/functions/function/invocations
+    command: python -m invoice_extraction.entrypoints.poller
+
+  api:
+    <<: *tools
+    depends_on: [api-lambda]
+    environment:
+      API_LAMBDA_URL: http://api-lambda:8080/2015-03-31/functions/function/invocations
+      # Usage plan emulation: single key, 1 req/s burst 2, 100 POST/day (GET throttled apart).
+      API_KEY: ${API_KEY:-local-dev-key}
+      RATE_PER_SECOND: ${RATE_PER_SECOND:-1}
+      BURST: ${BURST:-2}
+      DAILY_POST_LIMIT: ${DAILY_POST_LIMIT:-100}
+      GET_RATE_PER_SECOND: "20"
+      GET_BURST: "40"
+    command: uvicorn --factory invoice_extraction.entrypoints.api_shim:app --host 0.0.0.0 --port 8080
+    ports: ["8080:8080"]

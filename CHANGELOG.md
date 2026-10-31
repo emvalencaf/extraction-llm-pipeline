@@ -7,7 +7,96 @@ heading when `development` is released to `master`.
 
 ## [Unreleased]
 
+### Fixed
+
+- Lambda image installs from `uv.lock` (including `google-genai`) and the SDK import is
+  lazy, so `api_handler` and `worker_handler` start; verified with the local stack.
+- On the last receive any processing exception marks the job `failed`
+  (`retries_exhausted`); any non-business error hides the message for a growing delay. A
+  hard Lambda timeout cannot be caught, so such a job stays `processing`.
+- An unavailable escalation model raises `ModelUnavailableError` (retried by the queue)
+  instead of ending as `failed_validation`.
+
+### Changed
+
+- Commit titles have no length limit: removed the 72-character check from the `commit-msg`
+  hook (also run by CI) and from CONTRIBUTING.md.
+- Redrive and final-state rules and a `RetryPolicy` (defaults in one place, built once
+  from the environment) live in `domain/status.py`; the `idem#` key scheme stays in the
+  DynamoDB adapter; handlers and the poller log through `logging` without invoice content.
+- Review smells (#27), no behavior change: jobs are a typed `Job` dataclass and status
+  changes take a typed `JobUpdate` instead of `**fields: Any`; the worker handler parses
+  the receive count and S3 key in small helpers; queue-name/URL handling
+  (`composition/queues.py`) and API proxy-event parsing (`entrypoints/http_events.py`) are
+  shared instead of duplicated; `JobService.jobs` is private; optional collaborators
+  (`delayer`, `presign_client`, `S3_PUBLIC_ENDPOINT_URL`) are kept and now say why.
+
 ### Added
+
+- Async job lifecycle (#33): the full state machine (`awaiting_upload`, `queued`,
+  `processing`, `succeeded`, `failed_validation`, `failed`, `expired`) enforced by
+  conditional DynamoDB writes against a domain transition table; optional
+  `Idempotency-Key` on `POST /jobs` (200 with the first job on replay); duplicate
+  deliveries are skipped; uploads that never arrive turn `expired`. Queue behavior:
+  batch 1, 5 receives before the DLQ, 2 workers, visibility delay doubling per receive
+  on `ModelUnavailableError`, job marked `failed` on the last receive, worker-side
+  size check before download, and `make redrive` (native `StartMessageMoveTask`) that
+  re-runs jobs which failed by retries exhausted. The API shim emulates the API key
+  and usage plan with JSON 403/429 bodies; fake-gemini gains `PUT /control/fail`.
+  `make stack-lifecycle` runs the poison, redrive, idempotency and 403/429 scenarios.
+- Follow-ups to #29: few-shot examples are now anonymized with the same detector and
+  `[TYPE_n]` placeholders real inputs get (`scripts/build_fewshots.py`, regenerated
+  `examples.json`; a test checks no detected identifier remains). All three models run
+  at temperature 0, including `gemini-3.8-flash`. Evidence (checked 2026-10-31): Google's
+  Gemini 3 guide (https://ai.google.dev/gemini-api/docs/gemini-3) recommends keeping
+  temperature at the default 1.0 and warns that lower values "may lead to unexpected
+  behavior, such as looping or degraded performance"; it does not say the API rejects
+  other values, and no source found says so. No live API call was made, so acceptance
+  is unconfirmed: if the API returns a 400, set `temperature` back to `null` in
+  `prompts/settings.json`. The Prompt Version changes. `composition/runtime.py` uses
+  the real Gemini adapter when `GEMINI_API_KEY` is set, else `FAKE_GEMINI_URL`.
+
+- Walking skeleton (#28): hexagonal package `src/invoice_extraction/` with the
+  Extraction Schema (Decimal/ISO normalization in code), the `ExtractInvoice`
+  pipeline use case, in-process `FakeGemini`, pytest seam-1 tests, import-linter
+  layer contracts, and `tests` and `architecture` CI jobs.
+- Pre and post slots (#30): PDF guards (5 MB, 10 pages) ending with a
+  `TerminalReason`, text cleanup, reversible `[TYPE_n]` Anonymization through a
+  Presidio adapter (pattern recognizers for GSTIN, PAN, tax ids, email, phone, bank
+  account, company names and Indian postal addresses, on a blank spaCy pipeline so
+  no model download), an in-memory never-persisted Placeholder map, exact-string
+  Restore and an output guardrail. Tests cover Leak Rate and the round trip.
+- Gemini extraction (#29): `GeminiExtractionModel` adapter; a Prompt Bundle (system
+  prompt, repair prompt, model settings, static Train Set few-shots) shipped in
+  `src/invoice_extraction/prompts/` and versioned by content hash, attached to every
+  `PipelineResult`; the pipeline is now a LangGraph graph (no checkpointer) with pre
+  and post slots as nodes, primary, fallback and escalation models, a validation
+  repair loop and jittered transient retries. `temperature` is omitted per model where
+  unsupported. `FakeGemini` gains model-targeted failure injection (`inject`).
+- Observability (#31): runtime Grounding Rate over non-anonymized fields (informational,
+  never blocking) on `PipelineResult` and the `job` event; one `llm_call` wide event
+  per Gemini call and one `job` event per job, through an `EventSink` port with a
+  `JsonEventSink` adapter (one JSON line each, EMF metrics without dimensions). Events
+  carry ids, counts, timings and field paths only; a test checks no invoice content
+  reaches any log line. `ExtractionModel.extract` now returns a `ModelReply` with token
+  usage.
+- `domain/ground_truth.py`: one pure function mapping a Kaggle ground-truth record to
+  an Extraction Schema shaped dict, reused for few-shots
+  (`scripts/build_fewshots.py`) and, later, the regression gate.
+
+### Changed
+
+- `ExtractionModel.extract` takes an `ExtractionRequest`; `ExtractInvoice` takes a
+  `PromptBundle`; `build_extract_invoice` accepts retry, repair, sleep and rng options.
+
+- Token-free local stack (#32): `compose.yaml` with Lambda RIE (API and two worker
+  containers), DynamoDB Local, moto (S3), ElasticMQ, an HTTP `fake-gemini` with a
+  control endpoint, a poller (S3 event relay skipping `s3:TestEvent`, URL-decoded keys,
+  one worker per RIE container), a FastAPI API shim and a boto3 `init`. `make stack-up`
+  starts it, `make stack-smoke` runs create job, presigned PUT, fetch result. Adds
+  `JobService`, API and worker Lambda handlers, DynamoDB/S3/HTTP-model adapters and
+  in-process seam-2 tests on moto. The `init` Terraform check is stubbed until
+  `infra/terraform` exists.
 
 - Split Manifest (seed 42, 60/20/20 stratified by line-item count) and its generator
   `scripts/make_split_manifest.py`.
@@ -15,6 +104,8 @@ heading when `development` is released to `master`.
   `docs/experiments/gemini-placeholder-preservation.md` (140/140 verbatim on the
   Validation Set).
 - `kaggle` (dev) and `google-genai` dependencies; `data/kaggle/` is git-ignored.
+- `implement-spec` accepts an optional ticket range or list (e.g. `28-33`) to implement
+  only a subset of a spec's tickets, leaving the spec and other tickets open.
 
 ## [0.2.0] - 2026-10-23
 

@@ -17,8 +17,17 @@ and test conventions when you start from this template.
 - Lint and format: `ruff` (config in `pyproject.toml`), enforced by the `pre-commit` hook.
 - Encoding: UTF-8, NFC-normalized, no BOM, no zero-width or bidi control characters
   (enforced by `scripts/check_unicode.py`).
-- Test command: _to be defined_
-- Directory layout: _to be defined_
+- Test command: `uv run pytest`. Architecture check: `uv run lint-imports`
+  (both run in CI).
+- Directory layout: hexagonal package `src/invoice_extraction/` with `domain/`
+  (schema, status; no I/O), `application/` (ports, use cases), `adapters/`
+  (infrastructure behind the ports: pypdf, Presidio, Gemini and `fake_gemini`, DynamoDB,
+  S3, SQS, JSON events), `composition/` (wiring from environment variables),
+  `entrypoints/` (Lambda handlers, plus the local-stack API shim, poller, init, redrive
+  and fake model server). Imports only point down that list; import-linter
+  enforces it. Tests live in `tests/`, shared builders in `tests/support/`.
+- Tests assert external behavior through the use case (seam 1) with
+  `FakeGemini`; never mock internals.
 
 ## Documentation
 
