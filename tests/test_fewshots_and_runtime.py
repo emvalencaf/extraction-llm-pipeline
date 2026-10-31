@@ -10,7 +10,7 @@ from invoice_extraction.adapters.gemini import GeminiExtractionModel
 from invoice_extraction.adapters.http_model import HttpExtractionModel
 from invoice_extraction.adapters.presidio_detector import PresidioDetector
 from invoice_extraction.application.privacy import TOKEN
-from invoice_extraction.composition.runtime import build_model
+from invoice_extraction.composition.runtime import build_model, resolve_gemini_key
 
 # Prompt Version of the bundle when the few-shots still held raw identifiers
 RAW_EXAMPLES_VERSION = "ec57dba25d195f0d"
@@ -68,6 +68,32 @@ def test_runtime_uses_gemini_when_the_api_key_is_set(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     monkeypatch.delenv("FAKE_GEMINI_URL", raising=False)
     assert isinstance(build_model(), GeminiExtractionModel)
+
+
+def test_gemini_key_is_read_from_ssm_when_only_the_parameter_name_is_set(monkeypatch):
+    class FakeSsm:
+        def get_parameter(self, **kwargs):
+            assert kwargs == {"Name": "/invoice/gemini", "WithDecryption": True}
+            return {"Parameter": {"Value": "key-from-ssm"}}
+
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.setenv("GEMINI_API_KEY_SSM_PARAMETER", "/invoice/gemini")
+
+    assert resolve_gemini_key(ssm=FakeSsm()) == "key-from-ssm"
+
+
+def test_a_plain_gemini_key_wins_over_the_ssm_parameter(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "plain")
+    monkeypatch.setenv("GEMINI_API_KEY_SSM_PARAMETER", "/invoice/gemini")
+
+    assert resolve_gemini_key(ssm=None) == "plain"
+
+
+def test_no_gemini_key_configured_resolves_to_none(monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY_SSM_PARAMETER", raising=False)
+
+    assert resolve_gemini_key(ssm=None) is None
 
 
 def test_runtime_falls_back_to_the_fake_gemini_url(monkeypatch):

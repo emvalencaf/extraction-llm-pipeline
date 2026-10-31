@@ -1,6 +1,9 @@
 """Seam 2 (in-process): the boto3 init and the HTTP fake-gemini."""
 
+from pathlib import Path
+
 import boto3
+import pytest
 from fastapi.testclient import TestClient
 from moto import mock_aws
 
@@ -49,8 +52,21 @@ def test_init_is_idempotent_and_routes_uploads_to_the_events_queue(monkeypatch):
         assert not any("ignored" in body for body in bodies)
 
 
-def test_terraform_check_is_skipped_until_terraform_exists(tmp_path):
+def test_terraform_check_is_skipped_when_there_is_no_infra_directory(tmp_path):
     assert "skipped" in check_against_terraform(tmp_path / "missing")
+
+
+def test_terraform_check_fails_when_a_local_resource_is_absent_from_the_tf_files(tmp_path):
+    (tmp_path / "main.tf").write_text('locals { names = { bucket = "invoices" } }')
+
+    with pytest.raises(SystemExit, match="jobs"):
+        check_against_terraform(tmp_path)
+
+
+def test_committed_terraform_defines_every_resource_the_local_init_creates():
+    infra = Path(__file__).resolve().parents[1] / "infra"
+
+    assert "passed" in check_against_terraform(infra)
 
 
 def test_fake_gemini_server_can_be_told_to_fail():
