@@ -19,6 +19,8 @@ heading when `development` is released to `master`.
 
 ### Changed
 
+- Commit titles have no length limit: removed the 72-character check from the `commit-msg`
+  hook (also run by CI) and from CONTRIBUTING.md.
 - Redrive and final-state rules and a `RetryPolicy` (defaults in one place, built once
   from the environment) live in `domain/status.py`; the `idem#` key scheme stays in the
   DynamoDB adapter; handlers and the poller log through `logging` without invoice content.
