@@ -1,0 +1,450 @@
+{
+  "dataset": "devp1866/high-quality-ocr-ready-invoice-pdfs",
+  "seed": 42,
+  "method": "stratified by line-item count, 60/20/20",
+  "sizes": {
+    "train": 60,
+    "validation": 20,
+    "test": 20
+  },
+  "item_count_by_set": {
+    "train": {
+      "1": 8,
+      "2": 4,
+      "3": 7,
+      "4": 11,
+      "5": 9,
+      "6": 9,
+      "7": 6,
+      "8": 6
+    },
+    "validation": {
+      "1": 2,
+      "2": 2,
+      "3": 2,
+      "4": 4,
+      "5": 3,
+      "6": 2,
+      "7": 3,
+      "8": 2
+    },
+    "test": {
+      "1": 2,
+      "2": 2,
+      "3": 2,
+      "4": 4,
+      "5": 2,
+      "6": 3,
+      "7": 3,
+      "8": 2
+    }
+  },
+  "sets": {
+    "train": [
+      {
+        "invoice_no": "51109301",
+        "filename": "invoice_51109301.pdf"
+      },
+      {
+        "invoice_no": "51109304",
+        "filename": "invoice_51109304.pdf"
+      },
+      {
+        "invoice_no": "51109308",
+        "filename": "invoice_51109308.pdf"
+      },
+      {
+        "invoice_no": "51109309",
+        "filename": "invoice_51109309.pdf"
+      },
+      {
+        "invoice_no": "51109310",
+        "filename": "invoice_51109310.pdf"
+      },
+      {
+        "invoice_no": "51109311",
+        "filename": "invoice_51109311.pdf"
+      },
+      {
+        "invoice_no": "51109316",
+        "filename": "invoice_51109316.pdf"
+      },
+      {
+        "invoice_no": "51109317",
+        "filename": "invoice_51109317.pdf"
+      },
+      {
+        "invoice_no": "51109318",
+        "filename": "invoice_51109318.pdf"
+      },
+      {
+        "invoice_no": "51109320",
+        "filename": "invoice_51109320.pdf"
+      },
+      {
+        "invoice_no": "51109321",
+        "filename": "invoice_51109321.pdf"
+      },
+      {
+        "invoice_no": "51109323",
+        "filename": "invoice_51109323.pdf"
+      },
+      {
+        "invoice_no": "51109325",
+        "filename": "invoice_51109325.pdf"
+      },
+      {
+        "invoice_no": "51109326",
+        "filename": "invoice_51109326.pdf"
+      },
+      {
+        "invoice_no": "51109327",
+        "filename": "invoice_51109327.pdf"
+      },
+      {
+        "invoice_no": "51109329",
+        "filename": "invoice_51109329.pdf"
+      },
+      {
+        "invoice_no": "51109330",
+        "filename": "invoice_51109330.pdf"
+      },
+      {
+        "invoice_no": "51109331",
+        "filename": "invoice_51109331.pdf"
+      },
+      {
+        "invoice_no": "51109332",
+        "filename": "invoice_51109332.pdf"
+      },
+      {
+        "invoice_no": "51109336",
+        "filename": "invoice_51109336.pdf"
+      },
+      {
+        "invoice_no": "51109337",
+        "filename": "invoice_51109337.pdf"
+      },
+      {
+        "invoice_no": "51109338",
+        "filename": "invoice_51109338.pdf"
+      },
+      {
+        "invoice_no": "51109339",
+        "filename": "invoice_51109339.pdf"
+      },
+      {
+        "invoice_no": "51109340",
+        "filename": "invoice_51109340.pdf"
+      },
+      {
+        "invoice_no": "51109341",
+        "filename": "invoice_51109341.pdf"
+      },
+      {
+        "invoice_no": "51109344",
+        "filename": "invoice_51109344.pdf"
+      },
+      {
+        "invoice_no": "51109345",
+        "filename": "invoice_51109345.pdf"
+      },
+      {
+        "invoice_no": "51109347",
+        "filename": "invoice_51109347.pdf"
+      },
+      {
+        "invoice_no": "51109349",
+        "filename": "invoice_51109349.pdf"
+      },
+      {
+        "invoice_no": "51109351",
+        "filename": "invoice_51109351.pdf"
+      },
+      {
+        "invoice_no": "51109352",
+        "filename": "invoice_51109352.pdf"
+      },
+      {
+        "invoice_no": "51109353",
+        "filename": "invoice_51109353.pdf"
+      },
+      {
+        "invoice_no": "51109354",
+        "filename": "invoice_51109354.pdf"
+      },
+      {
+        "invoice_no": "51109355",
+        "filename": "invoice_51109355.pdf"
+      },
+      {
+        "invoice_no": "51109357",
+        "filename": "invoice_51109357.pdf"
+      },
+      {
+        "invoice_no": "51109359",
+        "filename": "invoice_51109359.pdf"
+      },
+      {
+        "invoice_no": "51109360",
+        "filename": "invoice_51109360.pdf"
+      },
+      {
+        "invoice_no": "51109362",
+        "filename": "invoice_51109362.pdf"
+      },
+      {
+        "invoice_no": "51109363",
+        "filename": "invoice_51109363.pdf"
+      },
+      {
+        "invoice_no": "51109364",
+        "filename": "invoice_51109364.pdf"
+      },
+      {
+        "invoice_no": "51109365",
+        "filename": "invoice_51109365.pdf"
+      },
+      {
+        "invoice_no": "51109366",
+        "filename": "invoice_51109366.pdf"
+      },
+      {
+        "invoice_no": "51109368",
+        "filename": "invoice_51109368.pdf"
+      },
+      {
+        "invoice_no": "51109369",
+        "filename": "invoice_51109369.pdf"
+      },
+      {
+        "invoice_no": "51109371",
+        "filename": "invoice_51109371.pdf"
+      },
+      {
+        "invoice_no": "51109374",
+        "filename": "invoice_51109374.pdf"
+      },
+      {
+        "invoice_no": "51109377",
+        "filename": "invoice_51109377.pdf"
+      },
+      {
+        "invoice_no": "51109378",
+        "filename": "invoice_51109378.pdf"
+      },
+      {
+        "invoice_no": "51109379",
+        "filename": "invoice_51109379.pdf"
+      },
+      {
+        "invoice_no": "51109380",
+        "filename": "invoice_51109380.pdf"
+      },
+      {
+        "invoice_no": "51109385",
+        "filename": "invoice_51109385.pdf"
+      },
+      {
+        "invoice_no": "51109386",
+        "filename": "invoice_51109386.pdf"
+      },
+      {
+        "invoice_no": "51109388",
+        "filename": "invoice_51109388.pdf"
+      },
+      {
+        "invoice_no": "51109390",
+        "filename": "invoice_51109390.pdf"
+      },
+      {
+        "invoice_no": "51109391",
+        "filename": "invoice_51109391.pdf"
+      },
+      {
+        "invoice_no": "51109393",
+        "filename": "invoice_51109393.pdf"
+      },
+      {
+        "invoice_no": "51109394",
+        "filename": "invoice_51109394.pdf"
+      },
+      {
+        "invoice_no": "51109395",
+        "filename": "invoice_51109395.pdf"
+      },
+      {
+        "invoice_no": "51109397",
+        "filename": "invoice_51109397.pdf"
+      },
+      {
+        "invoice_no": "51109398",
+        "filename": "invoice_51109398.pdf"
+      }
+    ],
+    "validation": [
+      {
+        "invoice_no": "51109303",
+        "filename": "invoice_51109303.pdf"
+      },
+      {
+        "invoice_no": "51109305",
+        "filename": "invoice_51109305.pdf"
+      },
+      {
+        "invoice_no": "51109312",
+        "filename": "invoice_51109312.pdf"
+      },
+      {
+        "invoice_no": "51109315",
+        "filename": "invoice_51109315.pdf"
+      },
+      {
+        "invoice_no": "51109322",
+        "filename": "invoice_51109322.pdf"
+      },
+      {
+        "invoice_no": "51109324",
+        "filename": "invoice_51109324.pdf"
+      },
+      {
+        "invoice_no": "51109333",
+        "filename": "invoice_51109333.pdf"
+      },
+      {
+        "invoice_no": "51109342",
+        "filename": "invoice_51109342.pdf"
+      },
+      {
+        "invoice_no": "51109350",
+        "filename": "invoice_51109350.pdf"
+      },
+      {
+        "invoice_no": "51109358",
+        "filename": "invoice_51109358.pdf"
+      },
+      {
+        "invoice_no": "51109361",
+        "filename": "invoice_51109361.pdf"
+      },
+      {
+        "invoice_no": "51109367",
+        "filename": "invoice_51109367.pdf"
+      },
+      {
+        "invoice_no": "51109370",
+        "filename": "invoice_51109370.pdf"
+      },
+      {
+        "invoice_no": "51109375",
+        "filename": "invoice_51109375.pdf"
+      },
+      {
+        "invoice_no": "51109382",
+        "filename": "invoice_51109382.pdf"
+      },
+      {
+        "invoice_no": "51109384",
+        "filename": "invoice_51109384.pdf"
+      },
+      {
+        "invoice_no": "51109389",
+        "filename": "invoice_51109389.pdf"
+      },
+      {
+        "invoice_no": "51109396",
+        "filename": "invoice_51109396.pdf"
+      },
+      {
+        "invoice_no": "51109399",
+        "filename": "invoice_51109399.pdf"
+      },
+      {
+        "invoice_no": "51109400",
+        "filename": "invoice_51109400.pdf"
+      }
+    ],
+    "test": [
+      {
+        "invoice_no": "51109302",
+        "filename": "invoice_51109302.pdf"
+      },
+      {
+        "invoice_no": "51109306",
+        "filename": "invoice_51109306.pdf"
+      },
+      {
+        "invoice_no": "51109307",
+        "filename": "invoice_51109307.pdf"
+      },
+      {
+        "invoice_no": "51109313",
+        "filename": "invoice_51109313.pdf"
+      },
+      {
+        "invoice_no": "51109314",
+        "filename": "invoice_51109314.pdf"
+      },
+      {
+        "invoice_no": "51109319",
+        "filename": "invoice_51109319.pdf"
+      },
+      {
+        "invoice_no": "51109328",
+        "filename": "invoice_51109328.pdf"
+      },
+      {
+        "invoice_no": "51109334",
+        "filename": "invoice_51109334.pdf"
+      },
+      {
+        "invoice_no": "51109335",
+        "filename": "invoice_51109335.pdf"
+      },
+      {
+        "invoice_no": "51109343",
+        "filename": "invoice_51109343.pdf"
+      },
+      {
+        "invoice_no": "51109346",
+        "filename": "invoice_51109346.pdf"
+      },
+      {
+        "invoice_no": "51109348",
+        "filename": "invoice_51109348.pdf"
+      },
+      {
+        "invoice_no": "51109356",
+        "filename": "invoice_51109356.pdf"
+      },
+      {
+        "invoice_no": "51109372",
+        "filename": "invoice_51109372.pdf"
+      },
+      {
+        "invoice_no": "51109373",
+        "filename": "invoice_51109373.pdf"
+      },
+      {
+        "invoice_no": "51109376",
+        "filename": "invoice_51109376.pdf"
+      },
+      {
+        "invoice_no": "51109381",
+        "filename": "invoice_51109381.pdf"
+      },
+      {
+        "invoice_no": "51109383",
+        "filename": "invoice_51109383.pdf"
+      },
+      {
+        "invoice_no": "51109387",
+        "filename": "invoice_51109387.pdf"
+      },
+      {
+        "invoice_no": "51109392",
+        "filename": "invoice_51109392.pdf"
+      }
+    ]
+  }
+}

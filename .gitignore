@@ -24,3 +24,6 @@ graphify-out/
 .wiki/viz.html
 .claude/budget
 .claude/usage/
+
+# Downloaded Kaggle dataset (fixture, never committed)
+data/kaggle/

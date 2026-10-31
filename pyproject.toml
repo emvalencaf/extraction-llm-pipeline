@@ -11,3 +11,8 @@ extend-exclude = [".agents", ".claude"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "N", "RUF"]
+
+[dependency-groups]
+dev = [
+    "kaggle>=2.2.5",
+]
