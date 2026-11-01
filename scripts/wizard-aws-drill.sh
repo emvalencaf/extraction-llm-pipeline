@@ -208,6 +208,17 @@ queue_count() {  # queue_count URL ATTR
     --query "Attributes.$2" --output text
 }
 
+# lower_vt sets the jobs queue visibility timeout to 30 s and waits until it is in force. SQS
+# applies attribute changes within ~60 s, and the worker's poller is always long-polling: a
+# message sent earlier is received under the OLD timeout (5400 s) and stays in flight for 90 min.
+lower_vt() {
+  aws sqs set-queue-attributes --queue-url "$JOBS_URL" --attributes VisibilityTimeout=30
+  VT_CHANGED=1
+  say "waiting 70 s for SQS to apply the new visibility timeout..."
+  sleep 70
+  [[ "$(queue_count "$JOBS_URL" VisibilityTimeout)" == "30" ]] || { warn "visibility timeout not in force yet"; sleep 30; }
+}
+
 restore_vt() {
   if [[ "$VT_CHANGED" == "1" && -n "$ORIGINAL_VT" ]]; then
     aws sqs set-queue-attributes --queue-url "$JOBS_URL" \
@@ -294,11 +305,11 @@ ask RESULT_ALARMS "How many alarm emails arrived (0-8)?"
 
 stage "2/5 · Send the poison message"
 say "The jobs queue visibility timeout is 6x the worker timeout; the drill lowers it"
-say "to 30 s so the 5 receives take minutes, and restores it afterwards (also on Ctrl-C)."
+say "to 30 s (and waits ~70 s for SQS to apply it) so the 5 receives take minutes, and"
+say "restores it afterwards (also on Ctrl-C)."
 ORIGINAL_VT=$(queue_count "$JOBS_URL" VisibilityTimeout)
 say "original visibility timeout: ${ORIGINAL_VT}s"
-aws sqs set-queue-attributes --queue-url "$JOBS_URL" --attributes VisibilityTimeout=30
-VT_CHANGED=1
+lower_vt
 aws sqs send-message --queue-url "$JOBS_URL" \
   --message-body 'aws-drill poison message, not an S3 notification' >/dev/null
 say "✓ sent"
@@ -328,8 +339,7 @@ if ! uv run python -m invoice_extraction.entrypoints.redrive; then
   warn "redrive failed; see docs/runbook.md"
 else
   RESULT_REDRIVE="ok"
-  aws sqs set-queue-attributes --queue-url "$JOBS_URL" --attributes VisibilityTimeout=30
-  VT_CHANGED=1
+  lower_vt
   wait_for "the DLQ to be empty after the redrive" 120 dlq_is_empty || true
   wait_for "the message to fail 5 more times and return to the DLQ" 900 dlq_has_message || true
   restore_vt
