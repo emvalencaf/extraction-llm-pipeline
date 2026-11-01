@@ -7,6 +7,8 @@ heading when `development` is released to `master`.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-01
+
 ### Added
 
 - `docs/aws-drill.md`: human-run drill for the deployed stack (fire the 8 alarms, send a poison
