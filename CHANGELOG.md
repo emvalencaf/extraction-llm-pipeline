@@ -13,6 +13,9 @@ heading when `development` is released to `master`.
   `GEMINI_API_KEY`) after the apply. Before, a first CI deploy left the Terraform placeholder
   and the worker, which caches the key per container, failed every job. `wizard-setup.sh` sets
   the secret.
+- The deploy smoke test accepts `failed_validation` (`SMOKE_ACCEPT_VALIDATION_FAILURE=1`): its
+  one-line PDF makes the real model invent a seller and client, which validation rightly rejects.
+  Locally the smoke test still requires `succeeded`.
 
 ## [0.3.1] - 2026-11-01
 

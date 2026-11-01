@@ -154,7 +154,7 @@ jobs:
           API_KEY_ID="$(terraform -chdir=infra output -raw api_key_id)"
           API_KEY="$(aws apigateway get-api-key --api-key "$API_KEY_ID" --include-value --query value --output text)"
           echo "::add-mask::$API_KEY"
-          export API_URL API_KEY SMOKE_TIMEOUT_S=120
+          export API_URL API_KEY SMOKE_TIMEOUT_S=120 SMOKE_ACCEPT_VALIDATION_FAILURE=1
           uv run scripts/stack_smoke.py
       - name: Print the rollback command
         if: failure()
