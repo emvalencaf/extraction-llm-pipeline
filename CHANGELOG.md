@@ -9,9 +9,13 @@ heading when `development` is released to `master`.
 
 ### Added
 
+- Manual setup with no Terraform home is documented in the README and in
+  `scripts/wizard-gemini-key.sh`: activating the `Project` cost allocation tag in Billing, and
+  the gate's `GATE_GEMINI_API_KEY`, `KAGGLE_USERNAME`, `KAGGLE_KEY` secrets and
+  `GATE_KAGGLE_DATASET` variable.
 - Regression-gate workflow (#39): `.github/workflows/regression-gate.yml` runs
   `scripts/regression_gate.py` only when extraction-affecting paths change (domain,
-  application, composition, Prompt Bundle, scoring/model adapters, Test Set split, baseline,
+  application, composition, Prompt Bundle, adapters, Test Set split, baseline,
   gate script, locked dependencies). It uses the gate's own Google project key
   (`GATE_GEMINI_API_KEY`), downloads the Kaggle fixture (secrets `KAGGLE_USERNAME` and
   `KAGGLE_KEY`, variable `GATE_KAGGLE_DATASET`), and fails the check on a regression, the
@@ -19,53 +23,11 @@ heading when `development` is released to `master`.
   has `pull-requests: write`. `scripts/sticky_comment.py` posts the report as one sticky PR
   comment found by its hidden marker and updated in place. `ci_seeded_violations.sh` seeds
   workflow-hardening and sticky-logic violations.
-
-### Fixed
-
-- The local poller deleted the message when a Lambda invoke came back as a function error
-  (for example a timeout): it now leaves it for redelivery, as the real event source mapping
-  does.
-
-- Lambda image installs from `uv.lock` (including `google-genai`) and the SDK import is
-  lazy, so `api_handler` and `worker_handler` start; verified with the local stack.
-- On the last receive any processing exception marks the job `failed`
-  (`retries_exhausted`); any non-business error hides the message for a growing delay. A
-  hard Lambda timeout cannot be caught, so such a job stays `processing`.
-- An unavailable escalation model raises `ModelUnavailableError` (retried by the queue)
-  instead of ending as `failed_validation`.
-
-### Changed
-
-- Review fixes for the gate, resilience and infra work: the API usage plan throttles POST
-  (1 rps, burst 2) and GET (20/40) per method through `api_stages.throttle`, with the plan
-  ceiling at the larger of the two, so the GET limit is no longer capped by the POST one;
-  the image size and cold start measurements are recorded in `infra/README.md` and the
-  README (local, not measured on Lambda); `ExtractInvoice.prompt_version` is public and the
-  gate no longer reads a private attribute; the gate uses a `TestDocument` dataclass, scores an
-  invalid extraction in `score_document` (one place) and has tests that a quota or model
-  outage in the real graph is inconclusive while an unreadable PDF is a conclusive miss;
-  `assayer_scoring` shares field lists between `FIELD_MAP` and the amount keys;
-  `stack_client` reads the model names from `prompts/settings.json`; the runtime retry
-  policies share an environment helper.
-- Commit titles have no length limit: removed the 72-character check from the `commit-msg`
-  hook (also run by CI) and from CONTRIBUTING.md.
-- Redrive and final-state rules and a `RetryPolicy` (defaults in one place, built once
-  from the environment) live in `domain/status.py`; the `idem#` key scheme stays in the
-  DynamoDB adapter; handlers and the poller log through `logging` without invoice content.
-- Review smells (#27), no behavior change: jobs are a typed `Job` dataclass and status
-  changes take a typed `JobUpdate` instead of `**fields: Any`; the worker handler parses
-  the receive count and S3 key in small helpers; queue-name/URL handling
-  (`composition/queues.py`) and API proxy-event parsing (`entrypoints/http_events.py`) are
-  shared instead of duplicated; `JobService.jobs` is private; optional collaborators
-  (`delayer`, `presign_client`, `S3_PUBLIC_ENDPOINT_URL`) are kept and now say why.
-
-### Added
-
 - `ci` workflow (#38): adds `terraform fmt`/`validate` (root and bootstrap stacks, no backend)
   and `actionlint` jobs next to ruff, unit tests, import-linter and the compose-stack tests
   (fake-gemini only, no Gemini key). Public-repo hardening: read-only `contents` permission,
   no secrets in the workflow (fork PRs get none), `pull_request` trigger only, actions pinned
-  to commit SHAs, concurrency cancel. `scripts/ci_seeded_violations.sh` proves each check
+  to commit SHAs, concurrency cancel. A `seeded-violations` job runs `scripts/ci_seeded_violations.sh`, which proves each check
   fails on a seeded violation.
 - Observability module (#37): `infra/modules/observability` with 8 alarms (`job-failed`,
   `llm-call-errors`, `job-duration-high`, `grounding-rate-low` on the EMF metrics;
@@ -157,8 +119,49 @@ heading when `development` is released to `master`.
   an Extraction Schema shaped dict, reused for few-shots
   (`scripts/build_fewshots.py`) and, later, the regression gate.
 
+### Fixed
+
+- The `job-failed` alarm watches the new `JobInfraFailed` metric (outcomes other than
+  `succeeded` and `failed_validation`), so a bad PDF no longer pages; `JobFailed` stays on the
+  dashboard.
+- The local poller deleted the message when a Lambda invoke came back as a function error
+  (for example a timeout): it now leaves it for redelivery, as the real event source mapping
+  does.
+- Lambda image installs from `uv.lock` (including `google-genai`) and the SDK import is
+  lazy, so `api_handler` and `worker_handler` start; verified with the local stack.
+- On the last receive any processing exception marks the job `failed`
+  (`retries_exhausted`); any non-business error hides the message for a growing delay. A
+  hard Lambda timeout cannot be caught, so such a job stays `processing`.
+- An unavailable escalation model raises `ModelUnavailableError` (retried by the queue)
+  instead of ending as `failed_validation`.
+- `stack_client.worker_events` orders the wide events by emit time (`_aws.Timestamp`):
+  `compose logs` prints one worker's lines after the other's, so a job's events could come
+  back out of order; covered by `tests/test_stack_client.py`.
+
 ### Changed
 
+- Review fixes for the gate, resilience and infra work: the API usage plan throttles POST
+  (1 rps, burst 2) and GET (20/40) per method through `api_stages.throttle`, with the plan
+  ceiling at the larger of the two, so the GET limit is no longer capped by the POST one;
+  the image size and cold start measurements are recorded in `infra/README.md` and the
+  README (local, not measured on Lambda); `ExtractInvoice.prompt_version` is public and the
+  gate no longer reads a private attribute; the gate uses a `TestDocument` dataclass, scores an
+  invalid extraction in `score_document` (one place) and has tests that a quota or model
+  outage in the real graph is inconclusive while an unreadable PDF is a conclusive miss;
+  `assayer_scoring` shares field lists between `FIELD_MAP` and the amount keys;
+  `stack_client` reads the model names from `prompts/settings.json`; the runtime retry
+  policies share an environment helper.
+- Commit titles have no length limit: removed the 72-character check from the `commit-msg`
+  hook (also run by CI) and from CONTRIBUTING.md.
+- Redrive and final-state rules and a `RetryPolicy` (defaults in one place, built once
+  from the environment) live in `domain/status.py`; the `idem#` key scheme stays in the
+  DynamoDB adapter; handlers and the poller log through `logging` without invoice content.
+- Review smells (#27), no behavior change: jobs are a typed `Job` dataclass and status
+  changes take a typed `JobUpdate` instead of `**fields: Any`; the worker handler parses
+  the receive count and S3 key in small helpers; queue-name/URL handling
+  (`composition/queues.py`) and API proxy-event parsing (`entrypoints/http_events.py`) are
+  shared instead of duplicated; `JobService.jobs` is private; optional collaborators
+  (`delayer`, `presign_client`, `S3_PUBLIC_ENDPOINT_URL`) are kept and now say why.
 - `ExtractionModel.extract` takes an `ExtractionRequest`; `ExtractInvoice` takes a
   `PromptBundle`; `build_extract_invoice` accepts retry, repair, sleep and rng options.
 

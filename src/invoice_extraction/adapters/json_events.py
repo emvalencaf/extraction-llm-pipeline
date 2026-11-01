@@ -12,8 +12,10 @@ from dataclasses import asdict
 from typing import Any, TextIO
 
 from invoice_extraction.application.observability import LlmCallEvent, WideEvent
+from invoice_extraction.domain.status import JobStatus
 
 NAMESPACE = "InvoiceExtraction"
+_NOT_INFRA_FAILURE = {JobStatus.SUCCEEDED, JobStatus.FAILED_VALIDATION}
 
 
 def _metrics(event: WideEvent) -> dict[str, tuple[str, float | None]]:
@@ -28,6 +30,8 @@ def _metrics(event: WideEvent) -> dict[str, tuple[str, float | None]]:
     return {
         "JobSucceeded": ("Count", 1 if event.outcome == "succeeded" else 0),
         "JobFailed": ("Count", 0 if event.outcome == "succeeded" else 1),
+        # Outages only: a failed_validation (bad document) is a business outcome, not a page.
+        "JobInfraFailed": ("Count", 0 if event.outcome in _NOT_INFRA_FAILURE else 1),
         "JobDurationMs": ("Milliseconds", event.duration_ms),
         "GroundingRate": ("None", event.grounding_rate),
     }

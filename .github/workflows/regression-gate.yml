@@ -15,11 +15,7 @@ on:
       - src/invoice_extraction/application/**
       - src/invoice_extraction/composition/**
       - src/invoice_extraction/prompts/**
-      - src/invoice_extraction/adapters/assayer_scoring.py
-      - src/invoice_extraction/adapters/bundle_loader.py
-      - src/invoice_extraction/adapters/gemini.py
-      - src/invoice_extraction/adapters/presidio_detector.py
-      - src/invoice_extraction/adapters/pypdf_reader.py
+      - src/invoice_extraction/adapters/**
       - scripts/regression_gate.py
       - scripts/sticky_comment.py
       - data/split_manifest.json

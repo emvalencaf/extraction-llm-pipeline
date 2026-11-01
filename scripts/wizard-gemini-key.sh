@@ -200,9 +200,9 @@ finish() {
 
 run_wizard() {
 
-TOTAL_STAGES=2
+TOTAL_STAGES=4
 
-banner "Gemini API key (placeholder preservation test)"
+banner "Gemini key, regression-gate secrets and billing tag"
 
 stage "Google AI Studio: create an API key"
 say "The key stays in .env (git-ignored). Use a free-tier project with NO billing."
@@ -226,6 +226,35 @@ if confirm "Run the check now?"; then
     SKIPPED+=("verify GEMINI_API_KEY (HTTP $code)")
   fi
 fi
+
+stage "Regression gate: GitHub secrets and variable"
+say "The gate (.github/workflows/regression-gate.yml) needs its own Google project key,"
+say "separate from your local one, plus Kaggle credentials for the invoice fixture."
+if confirm "Set them on the current GitHub repository now?"; then
+  open_url "https://aistudio.google.com/apikey"
+  note "Use a different free-tier project than the one above (the gate has its own quota)."
+  ask_secret GATE_GEMINI_API_KEY "Paste the gate's Gemini API key:"
+  set_secret GATE_GEMINI_API_KEY "$GATE_GEMINI_API_KEY"
+  open_url "https://www.kaggle.com/settings"
+  step "Under 'API', create a token; it gives a username and a key."
+  ask KAGGLE_USERNAME "Kaggle username:"
+  set_secret KAGGLE_USERNAME "$KAGGLE_USERNAME"
+  ask_secret KAGGLE_KEY "Kaggle key:"
+  set_secret KAGGLE_KEY "$KAGGLE_KEY"
+  ask GATE_KAGGLE_DATASET "Kaggle dataset of the invoices (owner/slug):"
+  set_var GATE_KAGGLE_DATASET "$GATE_KAGGLE_DATASET"
+else
+  SKIPPED+=("gate secrets GATE_GEMINI_API_KEY, KAGGLE_USERNAME, KAGGLE_KEY and variable GATE_KAGGLE_DATASET")
+fi
+
+stage "AWS Billing: activate the Project cost allocation tag"
+say "The USD 10 budget filters on the Project tag, which only counts once activated."
+say "Terraform cannot do this. Do it once per AWS account, after the first deploy."
+open_url "https://us-east-1.console.aws.amazon.com/billing/home#/tags"
+step "Open 'Cost allocation tags' > 'User-defined cost allocation tags'."
+step "Select the tag key 'Project' (it appears after tagged resources exist) and click Activate."
+note "Activation can take up to 24 hours to show in Cost Explorer and the budget."
+pause "Done (or skipping for now)? Press Enter."
 
 finish
 }

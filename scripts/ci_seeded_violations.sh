@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Proves the `ci` checks fail on seeded violations: copies the working tree to a temp dir,
 # plants one violation per check and asserts the matching command exits non-zero.
-# Usage: scripts/ci_seeded_violations.sh   (needs uv and terraform; actionlint is optional)
+# Usage: scripts/ci_seeded_violations.sh   (needs uv and terraform; actionlint is
+# optional locally, required when CI is set so the check cannot silently skip)
 set -uo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 tmp=$(mktemp -d)
@@ -51,6 +52,11 @@ if command -v actionlint >/dev/null; then
   fresh
   sed -i 's/^  contents: read/  bogus: write/' "$tmp/w/.github/workflows/ci.yml"
   expect_fail "actionlint (invalid permission scope)" actionlint
+elif [ -n "${CI:-}" ]; then
+  echo "MISSING: actionlint must be installed in CI"
+  failed=1
+else
+  echo "skipped:    actionlint (not installed)"
 fi
 
 fresh

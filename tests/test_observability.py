@@ -7,7 +7,8 @@ import pytest
 
 from invoice_extraction.adapters.bundle_loader import load_bundle
 from invoice_extraction.adapters.fake_gemini import FakeGemini
-from invoice_extraction.adapters.json_events import JsonEventSink
+from invoice_extraction.adapters.json_events import JsonEventSink, to_record
+from invoice_extraction.application.observability import JobEvent
 from invoice_extraction.application.ports import ModelUnavailableError, TransientModelError
 from invoice_extraction.composition.container import build_extract_invoice
 from invoice_extraction.domain.status import JobStatus
@@ -153,6 +154,25 @@ def test_job_metrics_cover_outcome_duration_and_grounding():
     names = {m["Name"] for m in job["_aws"]["CloudWatchMetrics"][0]["Metrics"]}
     assert {"JobSucceeded", "JobFailed", "JobDurationMs", "GroundingRate"} <= names
     assert (job["JobSucceeded"], job["JobFailed"]) == (1, 0)
+
+
+@pytest.mark.parametrize(
+    ("outcome", "infra_failed"),
+    [
+        ("succeeded", 0),
+        ("failed_validation", 0),  # a bad document is a business failure, not an outage
+        ("failed", 1),
+        ("unavailable", 1),
+        ("error", 1),
+    ],
+)
+def test_job_infra_failed_metric_separates_outages_from_business_failures(outcome, infra_failed):
+    record = to_record(JobEvent(outcome=outcome, duration_ms=1.0, prompt_version="v"))
+
+    names = {m["Name"] for m in record["_aws"]["CloudWatchMetrics"][0]["Metrics"]}
+    assert "JobInfraFailed" in names
+    assert record["JobInfraFailed"] == infra_failed
+    assert record["JobFailed"] == (0 if outcome == "succeeded" else 1)
 
 
 def test_no_invoice_content_appears_in_any_log_line():
