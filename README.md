@@ -213,6 +213,17 @@ The `observability` module adds 8 CloudWatch alarms, a dashboard, one SNS `alert
 with an email subscription and a USD 10 budget filtered by the `Project` tag. Each alarm has
 an entry in the [runbook](docs/runbook.md).
 
+Two manual steps have no Terraform home (`scripts/wizard-gemini-key.sh` walks through both):
+
+- **Billing tag.** In the AWS Billing console, open Cost allocation tags and activate the
+  user-defined `Project` tag, once per account and after the first deploy. Until then the
+  budget sees no costs; activation takes up to 24 hours.
+- **Regression-gate secrets.** In the GitHub repository settings add the Actions secrets
+  `GATE_GEMINI_API_KEY` (a Google project key of its own, not the runtime one),
+  `KAGGLE_USERNAME` and `KAGGLE_KEY`, and the Actions variable `GATE_KAGGLE_DATASET`
+  (`owner/slug` of the invoice dataset). Without them the
+  [regression gate](.github/workflows/regression-gate.yml) fails; fork PRs never get them.
+
 The API key is created by Terraform (read it with `aws apigateway get-api-key --api-key
 <api_key_id> --include-value`) and rotated with
 `terraform -chdir=infra apply -replace=module.api.aws_api_gateway_api_key.this ...`.

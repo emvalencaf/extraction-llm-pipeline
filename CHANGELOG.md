@@ -9,6 +9,10 @@ heading when `development` is released to `master`.
 
 ### Added
 
+- Manual setup with no Terraform home is documented in the README and in
+  `scripts/wizard-gemini-key.sh`: activating the `Project` cost allocation tag in Billing, and
+  the gate's `GATE_GEMINI_API_KEY`, `KAGGLE_USERNAME`, `KAGGLE_KEY` secrets and
+  `GATE_KAGGLE_DATASET` variable.
 - Regression-gate workflow (#39): `.github/workflows/regression-gate.yml` runs
   `scripts/regression_gate.py` only when extraction-affecting paths change (domain,
   application, composition, Prompt Bundle, adapters, Test Set split, baseline,
