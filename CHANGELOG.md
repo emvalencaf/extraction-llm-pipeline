@@ -9,6 +9,13 @@ heading when `development` is released to `master`.
 
 ### Fixed
 
+- `deploy.yml` writes the runtime Gemini key to SSM (from the `production` Environment secret
+  `GEMINI_API_KEY`) after the apply. Before, a first CI deploy left the Terraform placeholder
+  and the worker, which caches the key per container, failed every job. `wizard-setup.sh` sets
+  the secret.
+- The deploy smoke test accepts `failed_validation` (`SMOKE_ACCEPT_VALIDATION_FAILURE=1`): its
+  one-line PDF makes the real model invent a seller and client, which validation rightly rejects.
+  Locally the smoke test still requires `succeeded`.
 - `scripts/deploy-infra.sh bootstrap` decides by itself whether to create the GitHub OIDC
   provider (keep it when its own state owns it, reuse another stack's, else create it).
   `wizard-setup.sh` used to ask, and answering "it exists" on a re-run made Terraform destroy

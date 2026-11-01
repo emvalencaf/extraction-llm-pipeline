@@ -326,10 +326,15 @@ fi
 
 if begin gemini "Gemini runtime key"; then
   say "The deployed worker reads the key from SSM. deploy-infra.sh up writes GEMINI_API_KEY"
-  say "there on a local deploy; the CI deploy never touches it. Use a key apart from the gate's."
+  say "there; deploy.yml gets it from the production Environment secret. Use a key apart from the gate's."
   open_url "https://aistudio.google.com/apikey"
   ask_secret GEMINI_API_KEY "Paste the runtime Gemini API key:"
   write_env GEMINI_API_KEY "$GEMINI_API_KEY"
+  if command -v gh >/dev/null 2>&1 && printf %s "$GEMINI_API_KEY" | gh secret set GEMINI_API_KEY --env production >/dev/null 2>&1; then
+    say "✓ GitHub secret GEMINI_API_KEY set on the production Environment (deploy.yml writes it to SSM)"
+  else
+    SKIPPED+=("secret for the CI deploy: gh secret set GEMINI_API_KEY --env production")
+  fi
   param="/invoice-extraction-prod/gemini-api-key"
   if aws ssm get-parameter --name "$param" >/dev/null 2>&1 && confirm "Parameter $param exists. Overwrite it now?"; then
     printf %s "$GEMINI_API_KEY" | aws ssm put-parameter --overwrite --type SecureString \
