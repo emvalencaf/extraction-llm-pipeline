@@ -2,6 +2,7 @@
 name: implement-spec
 description: "Implement the result of /to-spec and /to-tickets in code."
 disable-model-invocation: true
+argument-hint: "<spec> [tickets: N-M | N,N,N]"
 ---
 
 You have been provided a spec. This spec should have tickets associated with it, describing how to implement the spec.
@@ -15,6 +16,18 @@ The tickets are not a list of steps. They are a **task graph** with blocking rel
 Communication to and from subagents should be sparse. Communicate primarily through **context pointers**: to the spec, tickets, research notes, and previous commits. Don't duplicate information already available via pointers.
 
 **Implementer subagents** should be run in the background where possible for maximum concurrency.
+
+## Scope
+
+The optional second argument limits the run to a subset of the spec's tickets, as a range (`28-33`) or a list (`28,30,33`). With no subset, every ticket of the spec is in scope.
+
+When a subset is given:
+
+- Build the task graph from the whole spec, but only implement the in-scope tickets. Never touch the others.
+- Before starting, check that every blocker of an in-scope ticket is either in scope or already done. If one is neither, stop and report it; do not widen the scope on your own.
+- The draft PR and the final resolution (steps 3 and 8) cover only the in-scope tickets. Do not close the spec or the parent issue while out-of-scope tickets remain open.
+- Run `code-review` (step 7) once all in-scope tickets are complete, against the integration branch.
+- Report the out-of-scope tickets that are now unblocked, so the next run can start from them.
 
 ## Steps
 

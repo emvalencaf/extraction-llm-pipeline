@@ -1,0 +1,5 @@
+{
+  "primary": {"name": "gemini-3.5-flash-lite", "temperature": 0},
+  "fallback": {"name": "gemini-3.1-flash-lite", "temperature": 0},
+  "escalation": {"name": "gemini-3.8-flash", "temperature": 0}
+}

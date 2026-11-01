@@ -7,6 +7,7 @@ Thumbs.db
 
 # Environment and secrets
 .env
+.wizard-setup.state
 .env.*
 !.env.example
 
@@ -24,3 +25,17 @@ graphify-out/
 .wiki/viz.html
 .claude/budget
 .claude/usage/
+
+# Downloaded Kaggle dataset (fixture, never committed)
+data/kaggle/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+infra/backend.hcl
+infra/*.auto.tfvars
+infra/terraform.tfvars
+gate-report.md
+insights-report.md

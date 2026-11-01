@@ -165,6 +165,94 @@ Every commit is checked by the hooks: Unicode, `ruff`, the message format
 without `.wiki/`, an automatic wiki update (skip it with `SKIP_WIKI_UPDATE=1`).
 To release, open a PR from `development` into `master`.
 
+### Local stack
+
+A token-free stack (moto S3/SQS, DynamoDB local, ElasticMQ, a fake Gemini and the
+Lambda images under the Runtime Interface Emulator) runs with Docker Compose. The API
+listens on `:8080`. `make` picks `docker compose` (v2) or `docker-compose` (v1).
+
+```bash
+make stack-up         # build and start the stack in the background
+make stack-smoke      # happy path: create a job, upload a PDF, poll until succeeded
+make stack-lifecycle  # poison message, redrive, idempotency, 403 and 429
+make redrive          # replay the dead-letter queue with native SQS redrive
+make stack-down       # stop and remove the containers
+make test-compose     # failure-injection suite: the 11 scenarios on a fresh stack
+make demo-resilience  # watch scenarios 1, 2, 4 and 5 as a readable timeline
+```
+
+Failure injection uses only the `fake-gemini` control endpoint and environment variables
+(`POST /control/scenario` with `mode` `error`, `reply` or `crash`, optionally limited to one
+`model` and a number of `times`; `DELETE /control/scenario` clears it). `compose.yaml`
+compresses the timings (backoff, queue delay, visibility timeout, upload TTL). The suite
+takes about five minutes, most of it the two scenarios that wait on the queue: the DLQ
+after quota exhaustion and the Lambda timeout on the last receive.
+
+The Lambda image installs its dependencies from `uv.lock`.
+
+### Infrastructure (AWS)
+
+`infra/` holds the Terraform for one `prod` environment in `us-east-1`: `bootstrap/`
+(state bucket, local state, run once), `modules/{storage,queue,jobs-table,registry,secrets,worker,api}`
+and the root files that compose them. State uses S3-native locking (`use_lockfile`, no
+DynamoDB table). Everything has `force_destroy`/`force_delete`, so anyone can create and
+fully destroy it. `infra/locals.tf` holds the logical names the local `init` also creates;
+`check_against_terraform` (run by `init` and by a test) fails when they drift.
+
+```bash
+export BUCKET_SUFFIX=<your-account-id>      # makes the S3 names yours
+export ALERT_EMAIL=<you@example.com>        # alarms and budget; confirm the SNS email once
+export GEMINI_API_KEY=<key>                       # written to SSM after apply; without it every job fails
+scripts/deploy-infra.sh bootstrap           # state bucket + infra/backend.hcl, once
+scripts/deploy-infra.sh up                  # ECR, build and push the image, everything else
+aws ssm put-parameter --overwrite --type SecureString \
+  --name "$(terraform -chdir=infra output -raw gemini_parameter_name)" --value <gemini-key>
+scripts/deploy-infra.sh down                # destroy the stack, then the state bucket
+```
+
+The `observability` module adds 8 CloudWatch alarms, a dashboard, one SNS `alerts` topic
+with an email subscription and a USD 10 budget filtered by the `Project` tag. Each alarm has
+an entry in the [runbook](docs/runbook.md).
+
+Run `scripts/wizard-post-merge-setup.sh` for all the manual steps in order (gate secrets, branch-protection check, `ALERT_EMAIL`; SNS confirmation and Billing tag only after a deploy). Two of them have no Terraform home (`scripts/wizard-gemini-key.sh` also walks through both):
+
+- **Billing tag.** In the AWS Billing console, open Cost allocation tags and activate the
+  user-defined `Project` tag, once per account and after the first deploy. Until then the
+  budget sees no costs; activation takes up to 24 hours.
+- **Regression-gate secrets.** In the GitHub repository settings add the Actions secrets
+  `GATE_GEMINI_API_KEY` (a Google project key of its own, not the runtime one),
+  `KAGGLE_USERNAME` and `KAGGLE_KEY`, and the Actions variable `GATE_KAGGLE_DATASET`
+  (`owner/slug` of the invoice dataset). Without them the
+  [regression gate](.github/workflows/regression-gate.yml) fails; fork PRs never get them.
+
+**CI/CD deploy.** Run `scripts/wizard-setup.sh` to do all the setup below in order; it resumes after an interruption. [`deploy.yml`](.github/workflows/deploy.yml) plans on PRs with a read-only
+role; on master it runs the regression gate, waits for approval of the `production`
+Environment, applies and smoke-tests the real endpoint. After `scripts/deploy-infra.sh
+bootstrap` (it also creates the OIDC roles), set the repository variables `AWS_PLAN_ROLE_ARN`,
+`AWS_DEPLOY_ROLE_ARN` (outputs of `infra/bootstrap`), `BUCKET_SUFFIX` and `TF_STATE_BUCKET`,
+the secret `ALERT_EMAIL`, and give the `production` Environment required reviewers and master
+as its only deployment branch. A failed deploy is not rolled back: run
+`gh workflow run deploy.yml --ref master -f sha=<last-good-sha>` or revert on master.
+
+The API key is created by Terraform (read it with `aws apigateway get-api-key --api-key
+<api_key_id> --include-value`) and rotated with
+`terraform -chdir=infra apply -replace=module.api.aws_api_gateway_api_key.this ...`.
+
+The shared Lambda image measures 947 MB on disk (about 357 MB compressed). Cold start is
+about 6.1 s for the first invoke under the Lambda runtime interface emulator and 10-80 ms
+warm. These are local docker numbers, not measured on Lambda; details in
+[infra/README.md](infra/README.md).
+
+### Pipeline report (CloudWatch Logs Insights)
+
+`make insights-report` runs 12 Logs Insights queries through boto3 against the API and
+worker log groups of the deployed stack and writes `insights-report.md`: jobs by outcome,
+duration percentiles, failure reasons, model calls and tokens, repairs and fallbacks,
+Grounding Rate, throughput per hour, slowest jobs, Lambda duration, memory and cold starts,
+and timeouts. It needs AWS credentials; options are `--hours` (default 24), `--prefix` and
+`--output`, e.g. `uv run scripts/insights_report.py --hours 168`. The queries read only the
+`job` and `llm_call` wide events, which hold no invoice content, so the report can be shared.
+
 ### Status line budget
 
 The status line shows spend against a USD budget when you pay per token (no
