@@ -9,6 +9,12 @@ heading when `development` is released to `master`.
 
 ### Fixed
 
+- `scripts/stack_smoke.py` retries `POST /jobs` on 403 until `SMOKE_TIMEOUT_S`: right after a
+  first deploy the new API key has not reached its usage plan yet, and the smoke test failed a
+  healthy deploy.
+
+### Fixed
+
 - The OIDC roles in `infra/bootstrap` trusted the plain `repo:owner/name` subject, which never
   matches repositories with immutable subjects. `github_sub_prefix` now carries the exact prefix
   and `scripts/deploy-infra.sh bootstrap` reads it from GitHub.
