@@ -107,7 +107,7 @@ resource "aws_lambda_function" "this" {
   role          = aws_iam_role.this.arn
   package_type  = "Image"
   image_uri     = var.image_uri
-  timeout       = 10 # API Gateway answers at 29 s at most
+  timeout       = 29 # API Gateway cuts the request at 29 s, so more is wasted
   memory_size   = 512
 
   image_config {

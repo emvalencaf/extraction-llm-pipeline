@@ -49,7 +49,7 @@ fields @timestamp, event, job_id, outcome, reason, model
 ## `job-duration-high`
 
 - **Fires when:** the longest `JobDurationMs` exceeds 80% of the worker timeout
-  (96 s of 120 s).
+  (720 s of 900 s).
 - **Check:** `llm_calls`, `repairs`, `escalated` and `fell_back` on the slow
   `job` events, and `LlmLatencyMs` on the dashboard.
 - **Act:** a job near the timeout risks a hard Lambda timeout, which leaves the
