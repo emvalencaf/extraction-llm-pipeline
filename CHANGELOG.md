@@ -9,6 +9,9 @@ heading when `development` is released to `master`.
 
 ### Added
 
+- README rewritten for the extraction pipeline (it was the harness template) with four diagrams in
+  `docs/diagrams/` (AWS architecture, job flow, extraction graph, CI/CD) built by
+  `docs/diagrams/build.py` from the AWS Architecture Icons and Font Awesome Free (#48, #63).
 - `make demo`: brings the token-free stack up, sends a sample invoice, prints the result JSON and
   tears the stack down (`scripts/demo.py`).
 - `scripts/gate_report.py` (`make gate-report`) renders the README gate report from

@@ -2,27 +2,22 @@
 
 <!--
 Structure adapted from https://github.com/othneildrew/Best-README-Template
-Badges are left out because this repository is private and shields.io cannot read it.
-When it is public, add them here, for example:
-[![Issues][issues-shield]][issues-url]
-[issues-shield]: https://img.shields.io/github/issues/emvalencaf/my-harness.svg?style=for-the-badge
-[issues-url]: https://github.com/emvalencaf/my-harness/issues
 -->
 
 <br />
 <div align="center">
-  <h3 align="center">Harness template</h3>
+  <h3 align="center">Invoice extraction pipeline</h3>
 
   <p align="center">
-    Starting point for new projects: agent skills, contribution rules and a
-    knowledge bundle, ready to use.
+    Turns invoice PDFs into validated, structured JSON with an LLM, on AWS, and gates
+    every change against a measured regression baseline.
     <br />
-    <a href="CONTRIBUTING.md"><strong>Explore the docs »</strong></a>
+    <a href="docs/runbook.md"><strong>Explore the docs »</strong></a>
     <br />
     <br />
-    <a href="https://github.com/emvalencaf/my-harness/issues/new">Report Bug</a>
+    <a href="https://github.com/emvalencaf/extraction-llm-pipeline/issues/new">Report Bug</a>
     &middot;
-    <a href="https://github.com/emvalencaf/my-harness/issues/new">Request Feature</a>
+    <a href="https://github.com/emvalencaf/extraction-llm-pipeline/issues/new">Request Feature</a>
   </p>
 </div>
 
@@ -32,7 +27,7 @@ When it is public, add them here, for example:
     <li>
       <a href="#about-the-project">About The Project</a>
       <ul>
-        <li><a href="#whats-included">What's included</a></li>
+        <li><a href="#how-it-works">How it works</a></li>
         <li><a href="#built-with">Built With</a></li>
       </ul>
     </li>
@@ -45,6 +40,17 @@ When it is public, add them here, for example:
     </li>
     <li>
       <a href="#usage">Usage</a>
+      <ul>
+        <li><a href="#local-stack">Local stack</a></li>
+        <li><a href="#job-flow">Job flow</a></li>
+        <li><a href="#regression-gate-report">Regression gate report</a></li>
+        <li><a href="#infrastructure-aws">Infrastructure (AWS)</a></li>
+        <li><a href="#deployment">Deployment</a></li>
+        <li><a href="#pipeline-report-cloudwatch-logs-insights">Pipeline report</a></li>
+      </ul>
+    </li>
+    <li>
+      <a href="#development-workflow">Development workflow</a>
       <ul>
         <li><a href="#daily-workflow">Daily workflow</a></li>
         <li><a href="#status-line-budget">Status line budget</a></li>
@@ -61,43 +67,40 @@ When it is public, add them here, for example:
 
 ## About The Project
 
-A repository to start a project from, not a project itself. It brings the pieces
-that are tedious to set up and easy to get inconsistent: a set of agent skills
-that cover the path from idea to shipped change, a commit and branch convention
-enforced by git hooks and CI, a knowledge bundle (`.wiki/`) that agents keep in
-sync with the code, a status line, and a dashboard of where your Claude Code
-sessions and tokens go.
+Send an invoice PDF to an API and get back a validated JSON of its seller, client, line
+items and totals. The text is anonymized before it reaches the model (Gemini only sees
+Placeholders such as `[NAME_1]`), the reply is validated against one schema, and a failed
+validation is repaired or escalated to a stronger model before the job gives up. Business
+failures end the job; only infrastructure failures retry through SQS and land in a
+dead-letter queue.
+
+Every change to the extraction path is checked by a deterministic regression gate against a
+committed baseline, and deploys to AWS need that gate plus a human approval.
+
+![AWS architecture](docs/diagrams/architecture.svg)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-### What's included
+### How it works
 
-| Path | Purpose |
-|---|---|
-| `.agents/skills/` | Agent skills (source of truth). `.claude/skills/` symlinks to it. |
-| `.wiki/` | [OKF](.agents/skills/wiki-okf/references/SPEC.md) knowledge bundle. Query it with `/wiki-okf-query`; publish it to the GitHub Wiki with `scripts/publish_wiki.sh --push`. |
-| `docs/adr/` | Architecture decision records. |
-| `AGENTS.md`, `CLAUDE.md` | Instructions loaded by coding agents. |
-| `CONTRIBUTING.md` | Branch strategy and commit convention. |
-| `CODE_STANDARDS.md` | Coding and documentation standards. |
-| `CHANGELOG.md` | Release history. |
-| `.github/` | PR template and the CI workflow. |
-| `.githooks/` | `pre-commit` (Unicode, ruff, wiki update) and `commit-msg` hooks. |
-| `scripts/` | `setup.sh`, `protect-master.sh`, `check_unicode.py`, `set-budget.sh` (budget for pay-per-token use), `usage-tracking.sh`, `usage_log.sh`. |
-| `.claude/settings.json`, `scripts/statusline.sh` | Project-level status line (needs `jq`): project, model, branch with dirty/ahead/behind markers (red on protected branches), context, cost or budget, rate limits, duration and session id (for the `Session-Id` trailer). |
-| `pyproject.toml`, `.editorconfig` | ruff config and editor defaults (Python, UTF-8). |
+The worker runs a LangGraph graph: `pre` checks and cleans the PDF text and anonymizes it,
+`call` asks the model, `post` guards the reply and restores the real identifiers, and
+`validate` checks the Extraction Schema. Terms are defined in [GLOSSARY.md](GLOSSARY.md);
+the decisions behind them are the [ADRs](docs/adr).
 
-Not sure which skill fits a task? Run `/ask-harness`.
+![Extraction graph](docs/diagrams/extraction-graph.svg)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ### Built With
 
-* [Python](https://www.python.org) managed with [uv](https://docs.astral.sh/uv/)
+* [Python](https://www.python.org) 3.11+ managed with [uv](https://docs.astral.sh/uv/)
+* [LangGraph](https://langchain-ai.github.io/langgraph/), [Pydantic](https://docs.pydantic.dev), [FastAPI](https://fastapi.tiangolo.com)
+* [Google Gemini](https://ai.google.dev) through `google-genai`
+* [Presidio](https://microsoft.github.io/presidio/) for reversible anonymization
+* [AWS](https://aws.amazon.com): API Gateway, Lambda (container images), S3, SQS, DynamoDB, SSM, CloudWatch
+* [Terraform](https://www.terraform.io) and [GitHub Actions](https://docs.github.com/actions)
 * [ruff](https://docs.astral.sh/ruff/) for lint and format
-* [Claude Code](https://claude.com/claude-code) skills and hooks
-* [Open Knowledge Format](.agents/skills/wiki-okf/references/SPEC.md) for the `.wiki/` bundle
-* [GitHub Actions](https://docs.github.com/actions) for CI
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -105,66 +108,28 @@ Not sure which skill fits a task? Run `/ask-harness`.
 
 ### Prerequisites
 
-[`git`](https://git-scm.com), [`uv`](https://docs.astral.sh/uv/) (runs the hooks
-and scripts), [`jq`](https://jqlang.org) (status line), [`gh`](https://cli.github.com)
-(creates the repo and protects `master`) and the
-[`claude`](https://claude.com/claude-code) CLI (the `pre-commit` hook uses it to
-update `.wiki/`).
+[`git`](https://git-scm.com), [`uv`](https://docs.astral.sh/uv/), [Docker](https://www.docker.com)
+with Compose (the local stack and `make demo`) and [`make`](https://www.gnu.org/software/make/).
+To deploy: [Terraform](https://www.terraform.io) 1.10+, the [AWS CLI](https://aws.amazon.com/cli/)
+and an AWS account. [`gh`](https://cli.github.com) and the [`claude`](https://claude.com/claude-code)
+CLI are only needed for contributing (the `pre-commit` hook uses `claude` to update `.wiki/`).
 
 ### Installation
 
-1. Create your repository. From the GitHub page click **Use this template**, or
-   with the CLI:
-   ```bash
-   gh repo create my-project --template emvalencaf/my-harness --private --clone
-   cd my-project
-   ```
-   GitHub copies only `master`, so `development` does not exist yet.
-2. Run the setup. It enables the hooks in `.githooks/`, sets the commit template
-   and creates `development`. Run it once per clone, then publish both branches:
-   ```bash
-   scripts/setup.sh
-   git push -u origin master development
-   ```
-3. Protect `master`. It requires PRs with one approval and blocks force pushes.
-   On a private repo this needs GitHub Pro; on the free plan the rule stays a
-   convention.
-   ```bash
-   scripts/protect-master.sh
-   ```
-4. Make it yours by running `/setup-project-harness`. It sets the project name and
-   description (generating your `README.md` from the same structure as this one),
-   configures `CODE_STANDARDS.md` and `pyproject.toml`, the issue tracker, usage
-   tracking and the budget. By hand instead:
-   - Replace this README, set `name` in `pyproject.toml`, reset `CHANGELOG.md` to
-     an empty `Unreleased` section and fill in the **Stack** section of
-     [CODE_STANDARDS.md](CODE_STANDARDS.md).
-   - Add a `LICENSE`.
-   - Delete the skills you do not want from `.agents/skills/` and their symlinks in
-     `.claude/skills/`.
-   - Replace `.wiki/getting-started.md` with your own knowledge (`/wiki-okf-produce`),
-     then run `/wiki-okf-validate .wiki --strict`.
+```bash
+git clone https://github.com/emvalencaf/extraction-llm-pipeline.git
+cd extraction-llm-pipeline
+uv sync
+scripts/setup.sh      # enables the git hooks, once per clone
+make demo             # see it work: no credentials, no tokens
+```
+
+`make demo` builds the local stack, sends a sample invoice, prints the result JSON and
+tears the stack down. Deploying to AWS is covered in [Infrastructure](#infrastructure-aws).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Usage
-
-### Daily workflow
-
-Everything follows [CONTRIBUTING.md](CONTRIBUTING.md):
-
-```bash
-git switch development && git pull
-git switch -c feat/my-change
-# ... work, then commit as: tag(subject/subsubject): summary
-git push -u origin feat/my-change
-gh pr create --base development
-```
-
-Every commit is checked by the hooks: Unicode, `ruff`, the message format
-(English, with `Session-Id` and `Co-Authored-By` trailers) and, when code changed
-without `.wiki/`, an automatic wiki update (skip it with `SKIP_WIKI_UPDATE=1`).
-To release, open a PR from `development` into `master`.
 
 ### Local stack
 
@@ -191,6 +156,14 @@ takes about five minutes, most of it the two scenarios that wait on the queue: t
 after quota exhaustion and the Lambda timeout on the last receive.
 
 The Lambda image installs its dependencies from `uv.lock`.
+
+### Job flow
+
+A job moves `awaiting_upload` → `queued` → `processing` → `succeeded`, `failed_validation` or
+`failed`. `make demo` and `make demo-resilience` show this flow on the local stack; the
+queue lane below is what the failure-injection suite exercises.
+
+![Job flow](docs/diagrams/job-flow.svg)
 
 ### Regression gate report
 
@@ -280,6 +253,15 @@ about 6.1 s for the first invoke under the Lambda runtime interface emulator and
 warm. These are local docker numbers, not measured on Lambda; details in
 [infra/README.md](infra/README.md).
 
+### Deployment
+
+![CI/CD pipeline](docs/diagrams/ci-cd.svg)
+
+The pipeline above is described in the **CI/CD deploy** paragraph of
+[Infrastructure](#infrastructure-aws); [ADR 0014](docs/adr/0014-deploy-from-master-with-approval-and-no-auto-rollback.md)
+explains why there is no automatic rollback. After the first deploy, run the
+[AWS drill](docs/aws-drill.md) and the [runbook](docs/runbook.md) alarm entries as needed.
+
 ### Pipeline report (CloudWatch Logs Insights)
 
 `make insights-report` runs 12 Logs Insights queries through boto3 against the API and
@@ -289,6 +271,32 @@ Grounding Rate, throughput per hour, slowest jobs, Lambda duration, memory and c
 and timeouts. It needs AWS credentials; options are `--hours` (default 24), `--prefix` and
 `--output`, e.g. `uv run scripts/insights_report.py --hours 168`. The queries read only the
 `job` and `llm_call` wide events, which hold no invoice content, so the report can be shared.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Development workflow
+
+The repository ships with agent skills (`.agents/skills/`, symlinked from `.claude/skills/`),
+git hooks, a status line, a knowledge bundle (`.wiki/`, publish it with
+`scripts/publish_wiki.sh --push`) and a usage dashboard. Rules are in
+[CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_STANDARDS.md](CODE_STANDARDS.md).
+
+### Daily workflow
+
+Everything follows [CONTRIBUTING.md](CONTRIBUTING.md):
+
+```bash
+git switch development && git pull
+git switch -c feat/my-change
+# ... work, then commit as: tag(subject/subsubject): summary
+git push -u origin feat/my-change
+gh pr create --base development
+```
+
+Every commit is checked by the hooks: Unicode, `ruff`, the message format
+(English, with `Session-Id` and `Co-Authored-By` trailers) and, when code changed
+without `.wiki/`, an automatic wiki update (skip it with `SKIP_WIKI_UPDATE=1`).
+To release, open a PR from `development` into `master`.
 
 ### Status line budget
 
@@ -344,20 +352,19 @@ Code on your machine, not your invoice, and only sessions after tracking was
 enabled have one. Tokens per skill are approximate (from the skill call until your
 next prompt) and intents are a keyword heuristic. There is no dollar conversion
 from tokens and no price table.
-
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Roadmap
 
-- [x] Branch strategy, commit convention, hooks and CI
-- [x] Agent skills for the idea-to-ship flow, plus the OKF knowledge bundle
-- [x] Project-level status line and usage report
+- [x] Extraction pipeline with anonymization, repair, fallback and escalation
+- [x] Local token-free stack, failure-injection suite and `make demo`
+- [x] Regression gate with a committed baseline
+- [x] Terraform for AWS, deploy workflow with OIDC roles, approval and smoke test
+- [ ] Run the [AWS drill](docs/aws-drill.md) and record its outcome
 - [ ] Add a `LICENSE`
-- [ ] Protect `master` (needs GitHub Pro or a public repository)
-- [ ] Tag and publish `v0.1.0`
+- [ ] Protect `master` with a branch rule
 
-See the [open issues](https://github.com/emvalencaf/my-harness/issues) for
-proposed features and known issues.
+See the [open issues](https://github.com/emvalencaf/extraction-llm-pipeline/issues) for proposed features and known issues.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -379,8 +386,7 @@ documentation rules are in [CODE_STANDARDS.md](CODE_STANDARDS.md).
 
 ## License
 
-No license has been chosen yet. Add a `LICENSE` file before sharing this
-repository or projects created from it.
+No license has been chosen yet. Add a `LICENSE` file before reusing this code.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -388,14 +394,13 @@ repository or projects created from it.
 
 Edson Mota Valença Filho - [@emvalencaf](https://github.com/emvalencaf)
 
-Project Link: [https://github.com/emvalencaf/my-harness](https://github.com/emvalencaf/my-harness)
+Project Link: [https://github.com/emvalencaf/extraction-llm-pipeline](https://github.com/emvalencaf/extraction-llm-pipeline)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Acknowledgments
 
 * [Best-README-Template](https://github.com/othneildrew/Best-README-Template) for the README structure
+* [AWS Architecture Icons](https://aws.amazon.com/architecture/icons/) and [Font Awesome Free](https://fontawesome.com) in the diagrams (see [docs/diagrams/icons/README.md](docs/diagrams/icons/README.md))
 * [mattpocock/skills](https://github.com/mattpocock/skills) for the engineering skills
 * [scaccogatto/okf-skills](https://github.com/scaccogatto/okf-skills) for the OKF skills
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>

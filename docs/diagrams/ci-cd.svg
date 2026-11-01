@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="620" viewBox="0 0 1180 620" role="img" aria-labelledby="t d">
+<title id="t">CI/CD pipeline</title><desc id="d">Pull request checks, regression gate, approval, apply and smoke test.</desc>
+<defs><marker id="arrow-dc2626" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#dc2626"/></marker><marker id="arrow-64748b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker><marker id="arrow-2563eb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2563eb"/></marker><marker id="arrow-6b7280" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/></marker><marker id="arrow-d97706" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d97706"/></marker><marker id="arrow-94a3b8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/></marker><marker id="arrow-16a34a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#16a34a"/></marker></defs>
+<rect width="1180" height="620" fill="#ffffff"/>
+<text x="30" y="32" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="bold" fill="#1f2937" text-anchor="start">CI/CD pipeline</text>
+<text x="30" y="50" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#6b7280" text-anchor="start">Nothing reaches AWS without a passing gate and a human approval.</text>
+<rect x="30" y="70" width="1120" height="170" rx="10" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="42" y="90" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" fill="#94a3b8" text-anchor="start">Pull request · ci.yml and the deploy.yml plan job</text>
+<rect x="55.0" y="125.0" width="190" height="70" rx="9" fill="#f8fafc" stroke="#2563eb" stroke-width="1.6"/>
+<svg x="65.0" y="146.0" width="28" height="28" viewBox="0 0 448 512"><path fill="#2563eb" d="M80 104a24 24 0 1 0 0-48 24 24 0 1 0 0 48zm80-24c0 32.8-19.7 61-48 73.3l0 70.7 176 0c26.5 0 48-21.5 48-48l0-22.7c-28.3-12.3-48-40.5-48-73.3 0-44.2 35.8-80 80-80s80 35.8 80 80c0 32.8-19.7 61-48 73.3l0 22.7c0 61.9-50.1 112-112 112l-176 0 0 70.7c28.3 12.3 48 40.5 48 73.3 0 44.2-35.8 80-80 80S0 476.2 0 432c0-32.8 19.7-61 48-73.3l0-205.3C19.7 141 0 112.8 0 80 0 35.8 35.8 0 80 0s80 35.8 80 80zm232 0a24 24 0 1 0 -48 0 24 24 0 1 0 48 0zM80 456a24 24 0 1 0 0-48 24 24 0 1 0 0 48z"/></svg>
+<text x="170" y="156" font-family="Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#1f2937" text-anchor="middle">Work branch → PR</text>
+<text x="170" y="172" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">into development</text>
+<text x="170" y="184" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">then development → master</text>
+<rect x="300.0" y="115.0" width="220" height="90" rx="9" fill="#f8fafc" stroke="#16a34a" stroke-width="1.6"/>
+<svg x="310.0" y="146.0" width="28" height="28" viewBox="0 0 512 512"><path fill="#16a34a" d="M256 512a256 256 0 1 1 0-512 256 256 0 1 1 0 512zM374 145.7c-10.7-7.8-25.7-5.4-33.5 5.3L221.1 315.2 169 263.1c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l72 72c5 5 11.8 7.5 18.8 7s13.4-4.1 17.5-9.8L379.3 179.2c7.8-10.7 5.4-25.7-5.3-33.5z"/></svg>
+<text x="430" y="156" font-family="Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#1f2937" text-anchor="middle">CI checks</text>
+<text x="430" y="172" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">Unicode · ruff · wiki · unit tests</text>
+<text x="430" y="184" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">import layers · terraform validate</text>
+<text x="430" y="196" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">actionlint · 11 compose scenarios</text>
+<rect x="590.0" y="125.0" width="220" height="70" rx="9" fill="#f8fafc" stroke="#2563eb" stroke-width="1.6"/>
+<svg x="600.0" y="146.0" width="28" height="28" viewBox="0 0 80 80">
+    
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g fill="#DD344C">
+            <rect x="0" y="0" width="80" height="80"></rect>
+        </g>
+        <path d="M14,59 L66,59 L66,21 L14,21 L14,59 Z M68,20 L68,60 C68,60.552 67.553,61 67,61 L13,61 C12.447,61 12,60.552 12,60 L12,20 C12,19.448 12.447,19 13,19 L67,19 C67.553,19 68,19.448 68,20 L68,20 Z M44,48 L59,48 L59,46 L44,46 L44,48 Z M57,42 L62,42 L62,40 L57,40 L57,42 Z M44,42 L52,42 L52,40 L44,40 L44,42 Z M29,46 C29,45.449 28.552,45 28,45 C27.448,45 27,45.449 27,46 C27,46.551 27.448,47 28,47 C28.552,47 29,46.551 29,46 L29,46 Z M31,46 C31,47.302 30.161,48.401 29,48.816 L29,51 L27,51 L27,48.815 C25.839,48.401 25,47.302 25,46 C25,44.346 26.346,43 28,43 C29.654,43 31,44.346 31,46 L31,46 Z M19,53.993 L36.994,54 L36.996,50 L33,50 L33,48 L36.996,48 L36.998,45 L33,45 L33,43 L36.999,43 L37,40.007 L19.006,40 L19,53.993 Z M22,38.001 L34,38.006 L34,31 C34.001,28.697 31.197,26.677 28,26.675 L27.996,26.675 C24.804,26.675 22.004,28.696 22.002,31 L22,38.001 Z M17,54.992 L17.006,39 C17.006,38.734 17.111,38.48 17.299,38.292 C17.486,38.105 17.741,38 18.006,38 L20,38.001 L20.002,31 C20.004,27.512 23.59,24.675 27.996,24.675 L28,24.675 C32.412,24.677 36.001,27.515 36,31 L36,38.007 L38,38.008 C38.553,38.008 39,38.456 39,39.008 L38.994,55 C38.994,55.266 38.889,55.52 38.701,55.708 C38.514,55.895 38.259,56 37.994,56 L18,55.992 C17.447,55.992 17,55.544 17,54.992 L17,54.992 Z M60,36 L62,36 L62,34 L60,34 L60,36 Z M44,36 L55,36 L55,34 L44,34 L44,36 Z" fill="#FFFFFF"></path>
+    </g>
+</svg>
+<text x="720" y="156" font-family="Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#1f2937" text-anchor="middle">Terraform plan</text>
+<text x="720" y="172" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">role: plan (read-only, OIDC)</text>
+<text x="720" y="184" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">published in the job summary</text>
+<rect x="890.0" y="125.0" width="200" height="70" rx="9" fill="#f8fafc" stroke="#2563eb" stroke-width="1.6"/>
+<svg x="900.0" y="146.0" width="28" height="28" viewBox="0 0 576 512"><path fill="#2563eb" d="M224 248a120 120 0 1 0 0-240 120 120 0 1 0 0 240zm-29.7 56C95.8 304 16 383.8 16 482.3 16 498.7 29.3 512 45.7 512l251.5 0C261 469.4 240 414.5 240 356.4l0-31.1c0-7.3 1-14.5 2.9-21.3l-48.6 0zm251 184.5l-13.3 6.3 0-188.1 96 32 0 19.6c0 55.8-32.2 106.5-82.7 130.3zM421.9 259.5l-112 37.3c-13.1 4.4-21.9 16.6-21.9 30.4l0 31.1c0 74.4 43 142.1 110.2 173.7l18.5 8.7c4.8 2.2 10 3.4 15.2 3.4s10.5-1.2 15.2-3.4l18.5-8.7C533 500.3 576 432.6 576 358.2l0-31.1c0-13.8-8.8-26-21.9-30.4l-112-37.3c-6.6-2.2-13.7-2.2-20.2 0z"/></svg>
+<text x="1010" y="156" font-family="Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#1f2937" text-anchor="middle">Review and merge</text>
+<text x="1010" y="172" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">master only gets PRs</text>
+<text x="1010" y="184" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">from development</text>
+<path d="M245,160 L300,160" fill="none" stroke="#94a3b8" stroke-width="1.8" marker-end="url(#arrow-94a3b8)"/>
+<path d="M520,160 L590,160" fill="none" stroke="#94a3b8" stroke-width="1.8" marker-end="url(#arrow-94a3b8)"/>
+<path d="M810,160 L890,160" fill="none" stroke="#94a3b8" stroke-width="1.8" marker-end="url(#arrow-94a3b8)"/>
+<rect x="30" y="280" width="1120" height="230" rx="10" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="42" y="300" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" fill="#94a3b8" text-anchor="start">Push to master · deploy.yml (also workflow_dispatch by SHA for rollback)</text>
+<rect x="65.0" y="365.0" width="170" height="70" rx="9" fill="#f8fafc" stroke="#d97706" stroke-width="1.6"/>
+<svg x="75.0" y="386.0" width="28" height="28" viewBox="0 0 640 512"><path fill="#d97706" d="M184.6 411.5c-3.1 7.3-5.4 14.9-6.8 22.6-14.5 8.8-31.5 13.9-49.8 13.9-53 0-96-43-96-96L32 64C14.3 64 0 49.7 0 32S14.3 0 32 0L224 0c17.7 0 32 14.3 32 32s-14.3 32-32 32l0 255.6-39.4 91.9zM96 64l0 128 64 0 0-128-64 0zM352 0L512 0c17.7 0 32 14.3 32 32s-14.3 32-32 32l0 153.4 91.3 213c2.3 5.4 3.8 11.1 4.4 17l.3 .6-.3 0c.2 1.8 .3 3.6 .3 5.4 0 32.3-26.2 58.6-58.6 58.6l-266.9 0c-32.3 0-58.6-26.2-58.6-58.6 0-1.8 .1-3.6 .3-5.4l-.3 0 .3-.6c.6-5.8 2.1-11.6 4.4-17L320 217.4 320 64c-17.7 0-32-14.3-32-32S302.3 0 320 0l32 0zM453.2 242.6c-3.4-8-5.2-16.5-5.2-25.2l0-153.4-64 0 0 153.4c0 8.7-1.8 17.2-5.2 25.2l-33.2 77.4 140.7 0-33.2-77.4z"/></svg>
+<text x="170" y="396" font-family="Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#1f2937" text-anchor="middle">Regression gate</text>
+<text x="170" y="412" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">only if extraction paths</text>
+<text x="170" y="424" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">changed · floor 90 %</text>
+<rect x="305.0" y="365.0" width="170" height="70" rx="9" fill="#f8fafc" stroke="#2563eb" stroke-width="1.6"/>
+<svg x="315.0" y="386.0" width="28" height="28" viewBox="0 0 512 512"><path fill="#2563eb" d="M288 32c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 208c0 8.8-7.2 16-16 16s-16-7.2-16-16l0-176c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 272c0 1.5 0 3.1 .1 4.6L67.6 283c-16-15.2-41.3-14.6-56.6 1.4S-3.6 325.7 12.4 341L124.8 448c43.1 41.1 100.4 64 160 64l19.2 0c97.2 0 176-78.8 176-176l0-208c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 112c0 8.8-7.2 16-16 16s-16-7.2-16-16l0-176c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 176c0 8.8-7.2 16-16 16s-16-7.2-16-16l0-208z"/></svg>
+<text x="410" y="396" font-family="Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#1f2937" text-anchor="middle">Approval</text>
+<text x="410" y="412" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">environment: production</text>
+<text x="410" y="424" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">required reviewers</text>
+<rect x="530.0" y="365.0" width="240" height="70" rx="9" fill="#f8fafc" stroke="#2563eb" stroke-width="1.6"/>
+<svg x="540.0" y="386.0" width="28" height="28" viewBox="0 0 80 80">
+    
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g fill="#ED7100">
+            <rect x="0" y="0" width="80" height="80"></rect>
+        </g>
+        <path d="M38.7880741,37.5776945 C38.2933845,37.8655125 37.9855777,38.4000317 37.9855777,38.973662 L37.9855777,66.7195186 L16.9987459,54.9841655 L16.9987459,27.7076428 L40.5569643,14.0588515 L61.484833,24.4283226 L38.7880741,37.5776945 Z M63.9203049,24.4022485 C63.9203049,23.8276153 63.6134974,23.2920933 63.0598448,22.9751927 L41.3464689,12.2146099 C40.8507799,11.9287976 40.2351662,11.9277948 39.7404766,12.2156128 L15.8024965,26.0840283 C15.3078069,26.3718463 15,26.9063655 15,27.4799958 L15,55.2158239 C15,55.7894542 15.3078069,56.3239734 15.8174871,56.6198142 L37.573836,68.7853901 C37.8216805,68.9287976 38.1005056,69 38.3783312,69 C38.6551575,69 38.9339826,68.9287976 39.1808277,68.7853901 C39.6765167,68.4985749 39.9843236,67.9640557 39.9843236,67.3894226 L39.9843236,39.201309 L63.1178084,25.798216 C63.6134974,25.5114008 63.9203049,24.9768817 63.9203049,24.4022485 L63.9203049,24.4022485 Z M63.9692742,55.0473451 L44.9811883,66.6613533 L44.9811883,56.2617967 L54.881976,49.872638 L54.9499334,49.424364 C54.9679221,49.3070305 54.9749177,49.3070305 54.9749177,48.7664942 L55.0058983,36.3602344 L64.0002547,31.1484218 L63.9692742,55.0473451 Z M65.1965042,29.0715191 C64.6998158,28.7816953 64.0842021,28.7826982 63.5885131,29.0715191 L54.0135209,34.6182835 C53.713709,34.7817481 53.0081517,35.1658398 53.0081517,35.9580914 L52.9761718,48.7173546 L43.8508975,54.606091 C43.3062392,54.9310145 42.9824424,55.4454766 42.9824424,55.9890214 L42.9824424,67.3081917 C42.9824424,67.8748021 43.2872511,68.3912699 43.7979307,68.6871107 C44.0647633,68.8405468 44.361577,68.9187691 44.6573914,68.9187691 C44.948209,68.9187691 45.2390265,68.8445582 45.5018616,68.692125 L65.1675223,56.6639396 C65.6622119,56.3761216 65.9680201,55.8416024 65.9680201,55.2709807 L66,30.4664837 C66,29.8928534 65.6921931,29.3583342 65.1965042,29.0715191 L65.1965042,29.0715191 Z" fill="#FFFFFF"></path>
+    </g>
+</svg>
+<text x="670" y="396" font-family="Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#1f2937" text-anchor="middle">Apply</text>
+<text x="670" y="412" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">role: deploy (OIDC, production only)</text>
+<text x="670" y="424" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">image tagged by SHA · terraform apply</text>
+<rect x="845.0" y="365.0" width="170" height="70" rx="9" fill="#f8fafc" stroke="#16a34a" stroke-width="1.6"/>
+<svg x="855.0" y="386.0" width="28" height="28" viewBox="0 0 512 512"><path fill="#16a34a" d="M256 512a256 256 0 1 1 0-512 256 256 0 1 1 0 512zM374 145.7c-10.7-7.8-25.7-5.4-33.5 5.3L221.1 315.2 169 263.1c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l72 72c5 5 11.8 7.5 18.8 7s13.4-4.1 17.5-9.8L379.3 179.2c7.8-10.7 5.4-25.7-5.3-33.5z"/></svg>
+<text x="950" y="396" font-family="Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#1f2937" text-anchor="middle">Smoke test</text>
+<text x="950" y="412" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">POST /jobs end to end</text>
+<text x="950" y="424" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">on the deployed endpoint</text>
+<rect x="1065.0" y="377.0" width="80" height="46" rx="9" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.6"/>
+<text x="1105" y="404" font-family="Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" fill="#1f2937" text-anchor="middle">live</text>
+<path d="M235,400 L305,400" fill="none" stroke="#16a34a" stroke-width="1.8" marker-end="url(#arrow-16a34a)"/>
+<text x="270" y="388" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#16a34a" text-anchor="middle">pass</text>
+<path d="M475,400 L530,400" fill="none" stroke="#2563eb" stroke-width="1.8" marker-end="url(#arrow-2563eb)"/>
+<text x="510" y="388" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#2563eb" text-anchor="middle">OK</text>
+<path d="M770,400 L845,400" fill="none" stroke="#94a3b8" stroke-width="1.8" marker-end="url(#arrow-94a3b8)"/>
+<path d="M1015,400 L1065,400" fill="none" stroke="#16a34a" stroke-width="1.8" marker-end="url(#arrow-16a34a)"/>
+<text x="1040" y="388" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#16a34a" text-anchor="middle">pass</text>
+<path d="M150,435 L150,470" fill="none" stroke="#dc2626" stroke-width="1.8" marker-end="url(#arrow-dc2626)"/>
+<text x="150" y="486" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#dc2626" text-anchor="middle">fail: deploy stops</text>
+<path d="M930,435 L930,470" fill="none" stroke="#dc2626" stroke-width="1.8" marker-end="url(#arrow-dc2626)"/>
+<svg x="964.0" y="534.0" width="52" height="52" viewBox="0 0 512 512"><path fill="#dc2626" d="M24 192l144 0c9.7 0 18.5-5.8 22.2-14.8s1.7-19.3-5.2-26.2l-46.7-46.7c75.3-58.6 184.3-53.3 253.5 15.9 75 75 75 196.5 0 271.5s-196.5 75-271.5 0c-10.2-10.2-19-21.3-26.4-33-9.5-14.9-29.3-19.3-44.2-9.8s-19.3 29.3-9.8 44.2C49.7 408.7 61.4 423.5 75 437 175 537 337 537 437 437S537 175 437 75C342.8-19.3 193.3-24.7 92.7 58.8L41 7C34.1 .2 23.8-1.9 14.8 1.8S0 14.3 0 24L0 168c0 13.3 10.7 24 24 24z"/></svg>
+<text x="990" y="604" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" fill="#1f2937" text-anchor="middle">Rollback</text>
+<text x="990" y="618" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#6b7280" text-anchor="middle">no automatic rollback</text>
+<text x="280" y="565" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#6b7280" text-anchor="start">git revert on master, or run deploy.yml by SHA of the last good commit (still needs approval)</text>
+<path d="M930,470 L930,520 L990,520 L990,530" fill="none" stroke="#dc2626" stroke-width="1.8" marker-end="url(#arrow-dc2626)"/>
+<text x="868" y="508" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#dc2626" text-anchor="middle">smoke fails</text>
+</svg>
