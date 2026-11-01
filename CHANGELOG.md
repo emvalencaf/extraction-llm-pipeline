@@ -8,7 +8,9 @@ heading when `development` is released to `master`.
 ## [Unreleased]
 
 ### Added
-- `scripts/deploy-infra.sh up` writes `GEMINI_API_KEY` to the SSM parameter after apply (through a
+
+- `scripts/insights_report.py` and `make insights-report`: 12 CloudWatch Logs Insights queries,
+  run through boto3, rendered as a Markdown report of the deployed stack.- `scripts/deploy-infra.sh up` writes `GEMINI_API_KEY` to the SSM parameter after apply (through a
   pipe, never the state), and warns loudly when the key is missing.
 - `scripts/wizard-post-merge-setup.sh`: resumable wizard for the manual setup of the observability
   and gate work (gate secrets, branch-protection check, `ALERT_EMAIL`; SNS confirmation and Billing tag only after a deploy).

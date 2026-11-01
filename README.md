@@ -234,6 +234,16 @@ about 6.1 s for the first invoke under the Lambda runtime interface emulator and
 warm. These are local docker numbers, not measured on Lambda; details in
 [infra/README.md](infra/README.md).
 
+### Pipeline report (CloudWatch Logs Insights)
+
+`make insights-report` runs 12 Logs Insights queries through boto3 against the API and
+worker log groups of the deployed stack and writes `insights-report.md`: jobs by outcome,
+duration percentiles, failure reasons, model calls and tokens, repairs and fallbacks,
+Grounding Rate, throughput per hour, slowest jobs, Lambda duration, memory and cold starts,
+and timeouts. It needs AWS credentials; options are `--hours` (default 24), `--prefix` and
+`--output`, e.g. `uv run scripts/insights_report.py --hours 168`. The queries read only the
+`job` and `llm_call` wide events, which hold no invoice content, so the report can be shared.
+
 ### Status line budget
 
 The status line shows spend against a USD budget when you pay per token (no

@@ -37,3 +37,4 @@ infra/backend.hcl
 infra/*.auto.tfvars
 infra/terraform.tfvars
 gate-report.md
+insights-report.md
