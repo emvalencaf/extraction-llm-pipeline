@@ -6,7 +6,7 @@
 #   scripts/deploy-infra.sh plan        plan only (the image must already be pushed for IMAGE_TAG)
 #   scripts/deploy-infra.sh down        destroy the stack, then the state bucket
 #
-# Needs: AWS credentials in the environment, terraform >= 1.10, docker (for `up`).
+# Needs: AWS credentials in the environment, terraform >= 1.10, docker with buildx (for `up`).
 # Variables: BUCKET_SUFFIX (required, makes the S3 names yours, e.g. your account id),
 #            ALERT_EMAIL (required, receives alarms and budget notices),
 #            IMAGE_TAG (default: current commit SHA), AWS_REGION (default us-east-1).
@@ -44,12 +44,11 @@ push_image() {
   repo="$(tf_main output -raw ecr_repository_url)"
   registry="${repo%%/*}"
   aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$registry"
-  # Lambda needs a single-manifest image. BuildKit adds a provenance manifest unless told
-  # not to; the legacy builder (no buildx) never does and rejects the flag.
-  build_flags=()
-  if docker buildx version >/dev/null 2>&1; then build_flags+=(--provenance=false); fi
-  docker build ${build_flags[@]+"${build_flags[@]}"} -f docker/lambda.Dockerfile -t "$repo:$IMAGE_TAG" .
-  docker push "$repo:$IMAGE_TAG"
+  docker buildx version >/dev/null 2>&1 || {
+    echo "docker buildx is required (install the docker-buildx-plugin package)" >&2; exit 1; }
+  # Lambda needs a single-manifest image (--provenance=false) for its default x86_64 arch.
+  docker buildx build --platform linux/amd64 --provenance=false --push \
+    -f docker/lambda.Dockerfile -t "$repo:$IMAGE_TAG" .
 }
 
 case "${1:-}" in
