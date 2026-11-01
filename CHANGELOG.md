@@ -13,6 +13,13 @@ heading when `development` is released to `master`.
   tears the stack down (`scripts/demo.py`).
 - `scripts/gate_report.py` (`make gate-report`) renders the README gate report from
   `data/baseline.json`; `--check` fails when it is stale.
+- `docs/adr/`: 15 ADRs for the decisions of #7-#26 (architecture, input, anonymization,
+  failure routing, prompts, split, gate, environments, Terraform, API security, local
+  stack, observability, deploy, secrets).
+- `scripts/publish_wiki.sh`: validates `.wiki/` with `wiki-okf-validate --strict`, renders
+  it to `site/wiki/index.html` and flattens it into GitHub Wiki pages
+  (`scripts/okf_to_github_wiki.py`); `--push` syncs them to the repository's GitHub Wiki.
+- `.wiki/`: pipeline, runbook and one concept per ADR.
 
 ## [0.3.2] - 2026-11-01
 
