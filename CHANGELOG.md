@@ -7,6 +7,13 @@ heading when `development` is released to `master`.
 
 ## [Unreleased]
 
+### Fixed
+
+- `deploy.yml` writes the runtime Gemini key to SSM (from the `production` Environment secret
+  `GEMINI_API_KEY`) after the apply. Before, a first CI deploy left the Terraform placeholder
+  and the worker, which caches the key per container, failed every job. `wizard-setup.sh` sets
+  the secret.
+
 ## [0.3.1] - 2026-11-01
 
 ### Fixed

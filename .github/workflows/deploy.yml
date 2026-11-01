@@ -9,7 +9,7 @@ name: Deploy
 # AWS access is OIDC only (roles in infra/bootstrap/oidc.tf). Set the repository variables
 # AWS_PLAN_ROLE_ARN, AWS_DEPLOY_ROLE_ARN, BUCKET_SUFFIX and TF_STATE_BUCKET and the secret
 # ALERT_EMAIL; the `production` Environment needs required reviewers and master as its only
-# deployment branch.
+# deployment branch, and holds the secret GEMINI_API_KEY (the runtime key written to SSM).
 on:
   pull_request:
     branches: [development, master]
@@ -122,6 +122,9 @@ jobs:
       BUCKET_SUFFIX: ${{ vars.BUCKET_SUFFIX }}
       ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
       TARGET_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.sha || github.sha }}
+      # Environment secret: only this approved job can read it. deploy-infra.sh writes it to SSM
+      # after the apply and before the smoke test; Terraform only creates a placeholder.
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
