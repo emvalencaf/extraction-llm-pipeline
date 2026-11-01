@@ -7,6 +7,7 @@ Thumbs.db
 
 # Environment and secrets
 .env
+.wizard-setup.state
 .env.*
 !.env.example
 

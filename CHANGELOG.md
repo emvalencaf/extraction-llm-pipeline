@@ -9,6 +9,10 @@ heading when `development` is released to `master`.
 
 ### Added
 
+- `scripts/wizard-setup.sh`: resumable wizard (finished stages kept in the git-ignored
+  `.wizard-setup.state`, `--reset` forgets them) for the AWS account, the bootstrap with the OIDC
+  roles, the GitHub variables and secret `deploy.yml` reads, the `production` Environment
+  and the runtime Gemini key.
 - `.github/workflows/deploy.yml`: Terraform plan on PRs (read-only OIDC role), and on master the
   regression gate, then apply behind the `production` Environment approval, an image tagged by
   commit SHA and a post-deploy `stack_smoke.py` run. No auto-rollback: a failure prints the
