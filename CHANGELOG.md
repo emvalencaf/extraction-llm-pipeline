@@ -9,6 +9,12 @@ heading when `development` is released to `master`.
 
 ### Added
 
+- `.github/workflows/deploy.yml`: Terraform plan on PRs (read-only OIDC role), and on master the
+  regression gate, then apply behind the `production` Environment approval, an image tagged by
+  commit SHA and a post-deploy `stack_smoke.py` run. No auto-rollback: a failure prints the
+  redeploy-by-SHA command. `workflow_dispatch` with `sha` redeploys a commit already on master.
+- `infra/bootstrap/oidc.tf`: GitHub OIDC provider and the plan (`pull_request`, read-only) and
+  deploy (`production` Environment, master workflow only) roles, outside the main stack.
 - `scripts/insights_report.py` and `make insights-report`: 12 CloudWatch Logs Insights queries,
   run through boto3, rendered as a Markdown report of the deployed stack.
 - `scripts/deploy-infra.sh up` writes `GEMINI_API_KEY` to the SSM parameter after apply (through a

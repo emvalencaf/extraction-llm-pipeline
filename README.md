@@ -225,6 +225,15 @@ Run `scripts/wizard-post-merge-setup.sh` for all the manual steps in order (gate
   (`owner/slug` of the invoice dataset). Without them the
   [regression gate](.github/workflows/regression-gate.yml) fails; fork PRs never get them.
 
+**CI/CD deploy.** [`deploy.yml`](.github/workflows/deploy.yml) plans on PRs with a read-only
+role; on master it runs the regression gate, waits for approval of the `production`
+Environment, applies and smoke-tests the real endpoint. After `scripts/deploy-infra.sh
+bootstrap` (it also creates the OIDC roles), set the repository variables `AWS_PLAN_ROLE_ARN`,
+`AWS_DEPLOY_ROLE_ARN` (outputs of `infra/bootstrap`), `BUCKET_SUFFIX` and `TF_STATE_BUCKET`,
+the secret `ALERT_EMAIL`, and give the `production` Environment required reviewers and master
+as its only deployment branch. A failed deploy is not rolled back: run
+`gh workflow run deploy.yml --ref master -f sha=<last-good-sha>` or revert on master.
+
 The API key is created by Terraform (read it with `aws apigateway get-api-key --api-key
 <api_key_id> --include-value`) and rotated with
 `terraform -chdir=infra apply -replace=module.api.aws_api_gateway_api_key.this ...`.

@@ -1,0 +1,166 @@
+name: Deploy
+
+# Plan on PRs, deploy from master (spec #27, ticket #44).
+#   pull_request   `plan` with the read-only role (no secrets reach fork PRs, so it is skipped).
+#   push to master `gate` -> `apply` (waits for approval of the `production` Environment) -> smoke.
+#   workflow_dispatch with `sha` redeploys a commit that is already on master (the rollback).
+# There is no auto-rollback: when apply or the smoke test fails, the job prints the command.
+#
+# AWS access is OIDC only (roles in infra/bootstrap/oidc.tf). Set the repository variables
+# AWS_PLAN_ROLE_ARN, AWS_DEPLOY_ROLE_ARN, BUCKET_SUFFIX and TF_STATE_BUCKET and the secret
+# ALERT_EMAIL; the `production` Environment needs required reviewers and master as its only
+# deployment branch.
+on:
+  pull_request:
+    branches: [development, master]
+    paths:
+      - infra/**
+      - docker/**
+      - src/**
+      - pyproject.toml
+      - uv.lock
+      - scripts/deploy-infra.sh
+      - scripts/stack_smoke.py
+      - .github/workflows/deploy.yml
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Commit on master to deploy (rollback)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# Deploys never overlap and are never cancelled half-way; PR plans are independent.
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('plan-{0}', github.event.pull_request.number) || 'deploy-prod' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  AWS_REGION: us-east-1
+  TF_VERSION: "1.10.5"
+
+jobs:
+  plan:
+    name: Terraform plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      BUCKET_SUFFIX: ${{ vars.BUCKET_SUFFIX }}
+      ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
+      TF_CLI_ARGS_plan: -lock=false # the role is read-only, so it cannot write the S3 lock
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+        with:
+          role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Backend config
+        run: printf 'bucket = "%s"\nregion = "%s"\n' "${{ vars.TF_STATE_BUCKET }}" "$AWS_REGION" > infra/backend.hcl
+      - name: Plan
+        run: scripts/deploy-infra.sh plan | tee plan.txt
+      - name: Publish the plan in the job summary
+        if: always()
+        run: |
+          if [ -s plan.txt ]; then { echo '```'; tail -c 60000 plan.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"; fi
+
+  # Same steps as regression-gate.yml, without its PR comment; the deploy needs a verdict on
+  # the commit being deployed, and a path-filtered PR check cannot give that.
+  gate:
+    name: Regression gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+      - name: Download the Kaggle invoices (git-ignored fixture)
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+          DATASET: ${{ vars.GATE_KAGGLE_DATASET }}
+        run: |
+          if [ -z "$DATASET" ]; then
+            echo "::error::repository variable GATE_KAGGLE_DATASET (owner/slug of the invoice dataset) is not set"
+            exit 1
+          fi
+          uvx kaggle datasets download "$DATASET" --path data/kaggle --unzip
+      - name: Run the gate
+        env:
+          GATE_GEMINI_API_KEY: ${{ secrets.GATE_GEMINI_API_KEY }}
+        run: uv run scripts/regression_gate.py --report gate-report.md
+      - name: Publish the report in the job summary
+        if: always()
+        run: |
+          if [ -s gate-report.md ]; then cat gate-report.md >> "$GITHUB_STEP_SUMMARY"; fi
+
+  # A rollback by SHA skips the gate, but only for a commit that already went through master.
+  apply:
+    name: Apply and smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: gate
+    if: >-
+      ${{ !cancelled() && (needs.gate.result == 'success' ||
+      (github.event_name == 'workflow_dispatch' && needs.gate.result == 'skipped')) }}
+    environment: production # required reviewers: the approval gate
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      BUCKET_SUFFIX: ${{ vars.BUCKET_SUFFIX }}
+      ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
+      TARGET_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ env.TARGET_SHA }}
+          fetch-depth: 0
+      - name: Only commits on master can be deployed
+        run: |
+          git fetch origin master
+          git merge-base --is-ancestor "$TARGET_SHA" origin/master || {
+            echo "::error::$TARGET_SHA is not on master"; exit 1; }
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Backend config
+        run: printf 'bucket = "%s"\nregion = "%s"\n' "${{ vars.TF_STATE_BUCKET }}" "$AWS_REGION" > infra/backend.hcl
+      - name: Apply (ECR, image tagged by commit SHA, everything else)
+        run: scripts/deploy-infra.sh up
+      - name: Smoke test against the deployed endpoint
+        run: |
+          API_URL="$(terraform -chdir=infra output -raw api_url)"
+          API_KEY_ID="$(terraform -chdir=infra output -raw api_key_id)"
+          API_KEY="$(aws apigateway get-api-key --api-key "$API_KEY_ID" --include-value --query value --output text)"
+          echo "::add-mask::$API_KEY"
+          export API_URL API_KEY SMOKE_TIMEOUT_S=120
+          uv run scripts/stack_smoke.py
+      - name: Print the rollback command
+        if: failure()
+        run: |
+          {
+            echo "### Deploy of ${TARGET_SHA::12} failed. No automatic rollback."
+            echo "Redeploy the last good commit on master (it still needs the production approval):"
+            echo '```'
+            echo "gh workflow run deploy.yml --ref master -f sha=<last-good-sha>"
+            echo '```'
+            echo "Or revert on master: \`git revert ${TARGET_SHA::12}\` and open the PR."
+          } | tee -a "$GITHUB_STEP_SUMMARY"
