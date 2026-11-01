@@ -199,6 +199,7 @@ finish() {
 ALARMS=(job-failed llm-call-errors job-duration-high grounding-rate-low
         dlq-not-empty queue-age-high worker-errors api-errors)
 export AWS_PAGER=""   # no (END) pager from the aws CLI
+DLQ_BASELINE=0   # messages in the DLQ before the drill (preflight demands 0)
 ORIGINAL_VT=""   # jobs queue visibility timeout before the drill
 VT_CHANGED=0
 
@@ -220,15 +221,28 @@ trap restore_vt EXIT
 wait_for() {
   local what="$1" limit="$2" waited=0; shift 2
   while ! "$@" >/dev/null 2>&1; do
-    (( waited >= limit )) && { warn "timed out after ${limit}s waiting for: $what"; return 1; }
+    (( waited >= limit )) && { printf '\n'; warn "timed out after ${limit}s waiting for: $what"; diagnose; return 1; }
     printf '  %s… waiting for %s (%ss)%s\r' "$DIM" "$what" "$waited" "$RESET"
     sleep 10; waited=$((waited + 10))
   done
   printf '\n  %s✓%s %s\n' "$GREEN" "$RESET" "$what"
 }
 
-dlq_has_message() { [[ "$(queue_count "$DLQ_URL" ApproximateNumberOfMessagesVisible)" -ge 1 ]]; }
-dlq_is_empty()    { [[ "$(queue_count "$DLQ_URL" ApproximateNumberOfMessagesVisible)" -eq 0 ]]; }
+# dlq_total counts visible + in flight + delayed messages: a message being received is not "visible".
+dlq_total() {
+  aws sqs get-queue-attributes --queue-url "$DLQ_URL" --attribute-names \
+    ApproximateNumberOfMessages ApproximateNumberOfMessagesNotVisible ApproximateNumberOfMessagesDelayed \
+    --query 'sum(map(&to_number(@), values(Attributes)))' --output text
+}
+dlq_has_message() { [[ "$(dlq_total)" -gt "$DLQ_BASELINE" ]]; }
+dlq_is_empty()    { [[ "$(dlq_total)" -le "$DLQ_BASELINE" ]]; }
+# diagnose prints what a stalled wait needs: queue counts and the worker's recent failures.
+diagnose() {
+  warn "diagnosis (jobs queue):"
+  aws sqs get-queue-attributes --queue-url "$JOBS_URL" --attribute-names All \
+    --query 'Attributes.{visible:ApproximateNumberOfMessages,inflight:ApproximateNumberOfMessagesNotVisible,visibility:VisibilityTimeout}' --output json
+  aws logs tail "/aws/lambda/$PREFIX-worker" --since 20m 2>/dev/null | grep "delivery failed" | tail -5 || true
+}
 alarm_in_alarm()  { [[ "$(aws cloudwatch describe-alarms --alarm-names "$PREFIX-dlq-not-empty" \
                           --query 'MetricAlarms[0].StateValue' --output text)" == "ALARM" ]]; }
 alarm_is_ok()     { [[ "$(aws cloudwatch describe-alarms --alarm-names "$PREFIX-dlq-not-empty" \
@@ -255,8 +269,8 @@ DLQ_URL=$(aws sqs get-queue-url --queue-name "$PREFIX-jobs-dlq" --query QueueUrl
 export JOBS_QUEUE_NAME="${JOBS_URL##*/}" DLQ_NAME="${DLQ_URL##*/}"
 say "region=$AWS_REGION prefix=$PREFIX"
 say "jobs queue=$JOBS_QUEUE_NAME  dlq=$DLQ_NAME"
-if ! dlq_is_empty; then
-  warn "the DLQ already holds messages. Handle them first (see docs/runbook.md); the drill purges the DLQ."
+if [[ "$(dlq_total)" != "0" ]]; then
+  warn "the DLQ already holds $(dlq_total) message(s) (visible or in flight). Redrive or inspect them first (docs/runbook.md); the drill purges the DLQ."
   exit 1
 fi
 if [[ "$(queue_count "$JOBS_URL" ApproximateNumberOfMessagesVisible)" != "0" ]]; then
@@ -320,7 +334,7 @@ else
   wait_for "the message to fail 5 more times and return to the DLQ" 900 dlq_has_message || true
   restore_vt
 fi
-if [[ "$(queue_count "$DLQ_URL" ApproximateNumberOfMessagesVisible)" == "1" ]]; then
+if [[ "$(dlq_total)" == "1" ]]; then
   if confirm "The DLQ holds only the drill's message. Purge the DLQ?"; then
     aws sqs purge-queue --queue-url "$DLQ_URL"
     wait_for "dlq-not-empty back to OK" 600 alarm_is_ok || true
