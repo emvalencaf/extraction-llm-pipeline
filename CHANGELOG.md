@@ -9,6 +9,10 @@ heading when `development` is released to `master`.
 
 ### Added
 
+- `docs/aws-drill.md`: human-run drill for the deployed stack (fire the 8 alarms, send a poison
+  message to the DLQ, redrive, clean up) with an outcome table to fill in (#49).
+  `scripts/wizard-aws-drill.sh` runs it end to end (refuses a dirty DLQ, restores the queue's
+  visibility timeout even on Ctrl-C, prints the Outcome row).
 - README rewritten for the extraction pipeline (it was the harness template) with four diagrams in
   `docs/diagrams/` (AWS architecture, job flow, extraction graph, CI/CD) built by
   `docs/diagrams/build.py` from the AWS Architecture Icons and Font Awesome Free (#48, #63).
