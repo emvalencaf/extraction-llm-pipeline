@@ -1,5 +1,8 @@
 # Update Log
 
+## 2026-11-01
+* **Addition**: Added the pipeline, runbook and one concept per ADR; the bundle is now published by `scripts/publish_wiki.sh`.
+
 ## 2026-10-11
 * **Addition**: Documented the `usage-report` session recaps (`away_summary`) in [usage-report skill](skills/usage-report.md).
 
