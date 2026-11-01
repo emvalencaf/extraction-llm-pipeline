@@ -2,6 +2,7 @@
 
 import json
 from collections.abc import Callable
+from functools import cache
 from typing import Any
 
 from invoice_extraction.application.jobs import JobService
@@ -33,8 +34,14 @@ def make_api_handler(service: JobService) -> Handler:
     return handler
 
 
+@cache
+def _handler() -> Handler:
+    """Wired once per process, so warm invocations skip the client and table setup."""
+    from invoice_extraction.composition.runtime import build_api_job_service
+
+    return make_api_handler(build_api_job_service())
+
+
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Lambda entry point; dependencies are wired from environment variables."""
-    from invoice_extraction.composition.runtime import build_job_service
-
-    return make_api_handler(build_job_service())(event, context)
+    return _handler()(event, context)

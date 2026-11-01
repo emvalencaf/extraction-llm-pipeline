@@ -7,6 +7,7 @@ infrastructure failure the message is first hidden for a growing visibility dela
 import json
 import logging
 from collections.abc import Callable
+from functools import cache
 from typing import Any
 from urllib.parse import unquote_plus
 
@@ -67,8 +68,14 @@ def make_worker_handler(
     return handler
 
 
-def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """Lambda entry point; dependencies are wired from environment variables."""
+@cache
+def _handler() -> Handler:
+    """Wired once per process: building the pipeline (Presidio, spaCy) is slow."""
     from invoice_extraction.composition.runtime import build_job_service, build_queue_delayer
 
-    return make_worker_handler(build_job_service(), build_queue_delayer())(event, context)
+    return make_worker_handler(build_job_service(), build_queue_delayer())
+
+
+def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
+    """Lambda entry point; dependencies are wired from environment variables."""
+    return _handler()(event, context)

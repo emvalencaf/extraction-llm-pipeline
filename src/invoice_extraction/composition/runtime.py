@@ -81,7 +81,7 @@ def build_llm_retry_policy() -> LlmRetryPolicy:
     )
 
 
-def build_job_service() -> JobService:
+def _job_service(extract) -> JobService:
     s3 = boto3.client("s3", config=_PATH_STYLE)
     # Optional: only the local stack needs presigned URLs on a host (localhost) other than the
     # one the containers use; on AWS both are the same endpoint.
@@ -94,12 +94,30 @@ def build_job_service() -> JobService:
     return JobService(
         jobs=DynamoJobRepository(boto3.resource("dynamodb").Table(os.environ["JOBS_TABLE"])),
         blobs=S3BlobStore(s3, os.environ["BUCKET"], presign_client=presigner),
-        extract=build_extract_invoice(
-            build_model(), sink=JsonEventSink(), retry=build_llm_retry_policy()
-        ),
+        extract=extract,
         upload_ttl=int(os.environ.get("UPLOAD_TTL_SECONDS", UPLOAD_TTL_SECONDS)),
         retry=build_retry_policy(),
     )
+
+
+def build_job_service() -> JobService:
+    """The service the worker runs: it extracts, so it builds the model and the pipeline."""
+    return _job_service(
+        build_extract_invoice(build_model(), sink=JsonEventSink(), retry=build_llm_retry_policy())
+    )
+
+
+def _api_never_extracts(*args, **kwargs):
+    raise RuntimeError("the API does not extract; only the worker does")
+
+
+def build_api_job_service() -> JobService:
+    """The service the API runs: it only creates and reads jobs.
+
+    Skipping the pipeline avoids constructing Presidio and spaCy, which alone takes about as
+    long as the API's whole timeout on a cold start.
+    """
+    return _job_service(_api_never_extracts)
 
 
 def build_queue_delayer() -> SqsVisibility:
