@@ -7,6 +7,8 @@ heading when `development` is released to `master`.
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-11-01
+
 ### Fixed
 
 - `deploy.yml` writes the runtime Gemini key to SSM (from the `production` Environment secret
