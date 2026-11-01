@@ -37,7 +37,7 @@ def make_api_handler(service: JobService) -> Handler:
 @cache
 def _handler() -> Handler:
     """Wired once per process, so warm invocations skip the client and table setup."""
-    from invoice_extraction.composition.runtime import build_api_job_service
+    from invoice_extraction.composition.service import build_api_job_service
 
     return make_api_handler(build_api_job_service())
 

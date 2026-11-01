@@ -11,11 +11,11 @@ from collections.abc import Callable
 from dataclasses import replace
 from typing import Any
 
-from invoice_extraction.application.pipeline import PipelineResult
 from invoice_extraction.application.ports import (
     BlobStore,
     JobRepository,
 )
+from invoice_extraction.application.result import PipelineResult
 from invoice_extraction.domain.job import Job, JobUpdate
 from invoice_extraction.domain.status import (
     MAX_PDF_BYTES,

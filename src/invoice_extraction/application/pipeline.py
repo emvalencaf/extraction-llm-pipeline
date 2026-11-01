@@ -15,13 +15,13 @@ repaired up to `max_repairs` times, then escalated once to the quality model.
 import random
 import time
 from collections.abc import Callable
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, replace
 from typing import Any, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 from pydantic import ValidationError
 
-from invoice_extraction.application.grounding import GroundingRate, grounding_rate
+from invoice_extraction.application.grounding import grounding_rate
 from invoice_extraction.application.observability import (
     EventSink,
     JobEvent,
@@ -41,19 +41,9 @@ from invoice_extraction.application.ports import (
 from invoice_extraction.application.post_slot import PostSlot
 from invoice_extraction.application.pre_slot import Prepared, PreSlot, RejectedError
 from invoice_extraction.application.prompt_bundle import ModelSetting, PromptBundle
+from invoice_extraction.application.result import PipelineResult
 from invoice_extraction.domain.schema import Extraction, model_schema
 from invoice_extraction.domain.status import JobStatus, TerminalReason
-
-
-@dataclass(frozen=True)
-class PipelineResult:
-    status: JobStatus
-    extraction: Extraction | None = None
-    errors: list[str] = field(default_factory=list)
-    reason: TerminalReason | None = None
-    prompt_version: str | None = None
-    model: str | None = None
-    grounding: GroundingRate | None = None  # informational; never blocks
 
 
 @dataclass(frozen=True)
