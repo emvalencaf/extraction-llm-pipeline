@@ -9,8 +9,13 @@ from invoice_extraction.adapters.bundle_loader import load_bundle
 from invoice_extraction.adapters.gemini import GeminiExtractionModel
 from invoice_extraction.adapters.http_model import HttpExtractionModel
 from invoice_extraction.adapters.presidio_detector import PresidioDetector
+from invoice_extraction.application.pipeline import RetryPolicy as LlmRetryPolicy
 from invoice_extraction.application.privacy import TOKEN
-from invoice_extraction.composition.runtime import build_model
+from invoice_extraction.composition.runtime import (
+    build_llm_retry_policy,
+    build_model,
+    resolve_gemini_key,
+)
 
 # Prompt Version of the bundle when the few-shots still held raw identifiers
 RAW_EXAMPLES_VERSION = "ec57dba25d195f0d"
@@ -70,7 +75,50 @@ def test_runtime_uses_gemini_when_the_api_key_is_set(monkeypatch):
     assert isinstance(build_model(), GeminiExtractionModel)
 
 
+def test_gemini_key_is_read_from_ssm_when_only_the_parameter_name_is_set(monkeypatch):
+    class FakeSsm:
+        def get_parameter(self, **kwargs):
+            assert kwargs == {"Name": "/invoice/gemini", "WithDecryption": True}
+            return {"Parameter": {"Value": "key-from-ssm"}}
+
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.setenv("GEMINI_API_KEY_SSM_PARAMETER", "/invoice/gemini")
+
+    assert resolve_gemini_key(ssm=FakeSsm()) == "key-from-ssm"
+
+
+def test_a_plain_gemini_key_wins_over_the_ssm_parameter(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "plain")
+    monkeypatch.setenv("GEMINI_API_KEY_SSM_PARAMETER", "/invoice/gemini")
+
+    assert resolve_gemini_key(ssm=None) == "plain"
+
+
+def test_no_gemini_key_configured_resolves_to_none(monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY_SSM_PARAMETER", raising=False)
+
+    assert resolve_gemini_key(ssm=None) is None
+
+
 def test_runtime_falls_back_to_the_fake_gemini_url(monkeypatch):
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     monkeypatch.setenv("FAKE_GEMINI_URL", "http://fake-gemini:8000")
     assert isinstance(build_model(), HttpExtractionModel)
+
+
+def test_llm_retry_timings_come_from_the_environment(monkeypatch):
+    monkeypatch.setenv("LLM_MAX_ATTEMPTS", "4")
+    monkeypatch.setenv("LLM_BACKOFF_BASE_SECONDS", "0.25")
+    monkeypatch.setenv("LLM_BACKOFF_CAP_SECONDS", "2")
+
+    policy = build_llm_retry_policy()
+
+    assert (policy.max_attempts, policy.base_delay, policy.max_delay) == (4, 0.25, 2.0)
+
+
+def test_llm_retry_timings_default_to_the_production_values(monkeypatch):
+    for name in ("LLM_MAX_ATTEMPTS", "LLM_BACKOFF_BASE_SECONDS", "LLM_BACKOFF_CAP_SECONDS"):
+        monkeypatch.delenv(name, raising=False)
+
+    assert build_llm_retry_policy() == LlmRetryPolicy()

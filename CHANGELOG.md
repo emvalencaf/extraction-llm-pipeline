@@ -9,6 +9,10 @@ heading when `development` is released to `master`.
 
 ### Fixed
 
+- The local poller deleted the message when a Lambda invoke came back as a function error
+  (for example a timeout): it now leaves it for redelivery, as the real event source mapping
+  does.
+
 - Lambda image installs from `uv.lock` (including `google-genai`) and the SDK import is
   lazy, so `api_handler` and `worker_handler` start; verified with the local stack.
 - On the last receive any processing exception marks the job `failed`
@@ -19,6 +23,17 @@ heading when `development` is released to `master`.
 
 ### Changed
 
+- Review fixes for the gate, resilience and infra work: the API usage plan throttles POST
+  (1 rps, burst 2) and GET (20/40) per method through `api_stages.throttle`, with the plan
+  ceiling at the larger of the two, so the GET limit is no longer capped by the POST one;
+  the image size and cold start measurements are recorded in `infra/README.md` and the
+  README (local, not measured on Lambda); `ExtractInvoice.prompt_version` is public and the
+  gate no longer reads a private attribute; the gate uses a `TestDocument` dataclass, scores an
+  invalid extraction in `score_document` (one place) and has tests that a quota or model
+  outage in the real graph is inconclusive while an unreadable PDF is a conclusive miss;
+  `assayer_scoring` shares field lists between `FIELD_MAP` and the amount keys;
+  `stack_client` reads the model names from `prompts/settings.json`; the runtime retry
+  policies share an environment helper.
 - Commit titles have no length limit: removed the 72-character check from the `commit-msg`
   hook (also run by CI) and from CONTRIBUTING.md.
 - Redrive and final-state rules and a `RetryPolicy` (defaults in one place, built once
@@ -33,6 +48,37 @@ heading when `development` is released to `master`.
 
 ### Added
 
+- Failure-injection suite and `make demo-resilience` (#34): the 11 scenarios of #23 run as
+  compose tests (`make test-compose`, marker `compose`) driven only by `fake-gemini` and
+  environment variables. `fake-gemini` gains `POST/DELETE /control/scenario` (modes `error`,
+  `reply`, `crash`; model targeting; call counts) and `GET /control/calls`. The model retry
+  timings are read from `LLM_MAX_ATTEMPTS`, `LLM_BACKOFF_BASE_SECONDS` and
+  `LLM_BACKOFF_CAP_SECONDS`; compose compresses them with the queue and upload TTL timings.
+  The demo prints scenarios 1, 2, 4 and 5 as a timeline.
+- Regression gate (#35): `scripts/regression_gate.py` runs the real graph on the Test Set
+  (temperature 0, model calls paced to 12 RPM, key of its own Google project in
+  `GATE_GEMINI_API_KEY`), scores deterministic assayer metrics (per field, line items,
+  all-correct rate; no judge) and compares with the committed `data/baseline.json`. It fails
+  on a regression of more than one document, below the absolute floor, or on an inconclusive
+  run (quota errors, missing results), writes a Markdown report for the sticky PR comment and
+  updates the baseline with `--update-baseline`. Verdict logic is `domain/gate.py`; the three
+  required assayer changes are listed in `docs/assayer-required-changes.md`. The first
+  baseline still has to be recorded with a live run.
+- Terraform core and image packaging (#36): `infra/` with a `bootstrap/` stack (S3 state
+  bucket) and modules `storage`, `queue` (jobs queue, DLQ with 5 receives, S3 notification
+  policy), `jobs-table`, `registry` (ECR), `secrets` (SSM SecureString for the Gemini key),
+  `worker` (SQS trigger: batch 1, concurrency 2, partial batch responses) and `api` (REST API,
+  API key, usage plan 1 req/s burst 2, GET throttled apart at 20/40, 15-minute presigned
+  PUT). One `prod` environment in us-east-1, S3-native state locking, `force_destroy`
+  everywhere, committed provider lock files. `scripts/deploy-infra.sh` (`bootstrap`, `up`
+  ECR-first, `plan`, `down`). `init_resources.check_against_terraform` now checks
+  `infra/` against the local resource names. The runtime reads the Gemini key from the SSM
+  parameter named by `GEMINI_API_KEY_SSM_PARAMETER`. Measured on the shared image
+  (local docker, 2026-10-31): 947 MB on disk, about 357 MB compressed; cold start about
+  6.1 s for the worker (init 2.2 s plus 5.6 s building the service with Presidio and
+  spaCy), 10 ms warm. Known gap: an API Gateway quota is plan-wide, so `daily_quota`
+  (default 1000) counts GET polling as well; the 100 POST/day limit is enforced only by
+  the local shim.
 - Async job lifecycle (#33): the full state machine (`awaiting_upload`, `queued`,
   `processing`, `succeeded`, `failed_validation`, `failed`, `expired`) enforced by
   conditional DynamoDB writes against a domain transition table; optional

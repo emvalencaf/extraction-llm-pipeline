@@ -177,9 +177,45 @@ make stack-smoke      # happy path: create a job, upload a PDF, poll until succe
 make stack-lifecycle  # poison message, redrive, idempotency, 403 and 429
 make redrive          # replay the dead-letter queue with native SQS redrive
 make stack-down       # stop and remove the containers
+make test-compose     # failure-injection suite: the 11 scenarios on a fresh stack
+make demo-resilience  # watch scenarios 1, 2, 4 and 5 as a readable timeline
 ```
 
+Failure injection uses only the `fake-gemini` control endpoint and environment variables
+(`POST /control/scenario` with `mode` `error`, `reply` or `crash`, optionally limited to one
+`model` and a number of `times`; `DELETE /control/scenario` clears it). `compose.yaml`
+compresses the timings (backoff, queue delay, visibility timeout, upload TTL). The suite
+takes about five minutes, most of it the two scenarios that wait on the queue: the DLQ
+after quota exhaustion and the Lambda timeout on the last receive.
+
 The Lambda image installs its dependencies from `uv.lock`.
+
+### Infrastructure (AWS)
+
+`infra/` holds the Terraform for one `prod` environment in `us-east-1`: `bootstrap/`
+(state bucket, local state, run once), `modules/{storage,queue,jobs-table,registry,secrets,worker,api}`
+and the root files that compose them. State uses S3-native locking (`use_lockfile`, no
+DynamoDB table). Everything has `force_destroy`/`force_delete`, so anyone can create and
+fully destroy it. `infra/locals.tf` holds the logical names the local `init` also creates;
+`check_against_terraform` (run by `init` and by a test) fails when they drift.
+
+```bash
+export BUCKET_SUFFIX=<your-account-id>      # makes the S3 names yours
+scripts/deploy-infra.sh bootstrap           # state bucket + infra/backend.hcl, once
+scripts/deploy-infra.sh up                  # ECR, build and push the image, everything else
+aws ssm put-parameter --overwrite --type SecureString \
+  --name "$(terraform -chdir=infra output -raw gemini_parameter_name)" --value <gemini-key>
+scripts/deploy-infra.sh down                # destroy the stack, then the state bucket
+```
+
+The API key is created by Terraform (read it with `aws apigateway get-api-key --api-key
+<api_key_id> --include-value`) and rotated with
+`terraform -chdir=infra apply -replace=module.api.aws_api_gateway_api_key.this ...`.
+
+The shared Lambda image measures 947 MB on disk (about 357 MB compressed). Cold start is
+about 6.1 s for the first invoke under the Lambda runtime interface emulator and 10-80 ms
+warm. These are local docker numbers, not measured on Lambda; details in
+[infra/README.md](infra/README.md).
 
 ### Status line budget
 

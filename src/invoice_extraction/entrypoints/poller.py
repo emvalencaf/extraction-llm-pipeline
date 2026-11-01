@@ -72,7 +72,9 @@ def work_once(sqs, queue_url: str, invoke: Invoke, wait_seconds: int = 0) -> boo
             type(error).__name__,
         )
         return True
-    if not result.get("batchItemFailures"):
+    # A function error (e.g. a timeout) comes back as an error payload; like a crash it must
+    # leave the message for redelivery.
+    if not result.get("batchItemFailures") and "errorMessage" not in result:
         sqs.delete_message(QueueUrl=queue_url, ReceiptHandle=message["ReceiptHandle"])
     return True
 

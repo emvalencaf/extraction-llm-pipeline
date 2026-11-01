@@ -16,14 +16,26 @@ x-lambda-env: &lambda-env
   <<: *aws
   JOBS_TABLE: jobs
   AWS_ENDPOINT_URL_SQS: http://elasticmq:9324
-  # Queue behavior with compressed timings (production: 5 receives, 30 s base, 900 s cap).
+  # Compressed timings so the failure-injection suite runs in seconds. Production keeps the
+  # same variable names: 5 receives, 30 s queue base, 900 s cap, 15 min upload TTL, 3 model
+  # attempts with 1 s base and 8 s cap.
   MAX_RECEIVES: "5"
-  RETRY_BASE_SECONDS: "2"
-  RETRY_CAP_SECONDS: "8"
+  RETRY_BASE_SECONDS: "1"
+  RETRY_CAP_SECONDS: "4"
+  UPLOAD_TTL_SECONDS: "20"
+  LLM_MAX_ATTEMPTS: "3"
+  LLM_BACKOFF_BASE_SECONDS: "0.5"
+  LLM_BACKOFF_CAP_SECONDS: "2"
   BUCKET: invoices
   FAKE_GEMINI_URL: http://fake-gemini:8000
   # Presigned PUT URLs are used from the host, not from inside the network.
   S3_PUBLIC_ENDPOINT_URL: http://localhost:5000
+
+# A hung model call must outlive this for the `crash` scenario; the queue's visibility
+# timeout (init, below) stays longer than it.
+x-worker-env: &worker-env
+  <<: *lambda-env
+  AWS_LAMBDA_FUNCTION_TIMEOUT: "12"
 
 x-lambda: &lambda
   build:
@@ -51,6 +63,7 @@ services:
 
   elasticmq:
     image: softwaremill/elasticmq:1.6.12
+    ports: ["9324:9324"]  # queue depth and DLQ checks from the failure-injection suite
 
   fake-gemini:
     <<: *tools
@@ -72,9 +85,11 @@ services:
     <<: *lambda
   worker-1:
     <<: *lambda
+    environment: *worker-env
     command: ["invoice_extraction.entrypoints.worker_handler.handler"]
   worker-2:
     <<: *lambda
+    environment: *worker-env
     command: ["invoice_extraction.entrypoints.worker_handler.handler"]
 
   poller:
