@@ -7,6 +7,13 @@ heading when `development` is released to `master`.
 
 ## [Unreleased]
 
+### Added
+
+- `make demo`: brings the token-free stack up, sends a sample invoice, prints the result JSON and
+  tears the stack down (`scripts/demo.py`).
+- `scripts/gate_report.py` (`make gate-report`) renders the README gate report from
+  `data/baseline.json`; `--check` fails when it is stale.
+
 ## [0.3.2] - 2026-11-01
 
 ### Fixed

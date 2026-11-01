@@ -172,6 +172,7 @@ Lambda images under the Runtime Interface Emulator) runs with Docker Compose. Th
 listens on `:8080`. `make` picks `docker compose` (v2) or `docker-compose` (v1).
 
 ```bash
+make demo             # one command, no credentials: up, sample invoice, result JSON, down
 make stack-up         # build and start the stack in the background
 make stack-smoke      # happy path: create a job, upload a PDF, poll until succeeded
 make stack-lifecycle  # poison message, redrive, idempotency, 403 and 429
@@ -189,6 +190,41 @@ takes about five minutes, most of it the two scenarios that wait on the queue: t
 after quota exhaustion and the Lambda timeout on the last receive.
 
 The Lambda image installs its dependencies from `uv.lock`.
+
+### Regression gate report
+
+Accepted result of the [regression gate](.github/workflows/regression-gate.yml) on the Test
+Set, generated from `data/baseline.json` by `make gate-report` (never edit it by hand).
+
+<!-- gate-report:start -->
+All-correct documents: **20/20** (floor 90%, tolerated drop 1, prompt version `954eaa0965a3e7d0`).
+
+| Field | Score |
+|---|---|
+| client.address | 1.0000 |
+| client.name | 1.0000 |
+| client.tax_id | 1.0000 |
+| currency | 1.0000 |
+| invoice_no | 1.0000 |
+| issue_date | 1.0000 |
+| items.description | 1.0000 |
+| items.gross_amount | 1.0000 |
+| items.list_f1 | 1.0000 |
+| items.list_precision | 1.0000 |
+| items.list_recall | 1.0000 |
+| items.net_amount | 1.0000 |
+| items.quantity | 1.0000 |
+| items.unit | 1.0000 |
+| items.unit_price | 1.0000 |
+| items.vat_pct | 1.0000 |
+| seller.address | 1.0000 |
+| seller.name | 1.0000 |
+| seller.tax_id | 1.0000 |
+| totals.gross_amount | 1.0000 |
+| totals.net_amount | 1.0000 |
+| totals.vat_amount | 1.0000 |
+| totals.vat_pct | 1.0000 |
+<!-- gate-report:end -->
 
 ### Infrastructure (AWS)
 
