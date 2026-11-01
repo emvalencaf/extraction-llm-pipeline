@@ -52,4 +52,19 @@ if command -v actionlint >/dev/null; then
   sed -i 's/^  contents: read/  bogus: write/' "$tmp/w/.github/workflows/ci.yml"
   expect_fail "actionlint (invalid permission scope)" actionlint
 fi
+
+fresh
+sed -i 's/^  pull_request:/  pull_request_target:/' "$tmp/w/.github/workflows/regression-gate.yml"
+expect_fail "regression-gate hardening (pull_request_target)" \
+  uv run pytest -q tests/test_regression_gate_workflow.py
+
+fresh
+sed -i 's/^  contents: read/  contents: write/' "$tmp/w/.github/workflows/regression-gate.yml"
+expect_fail "regression-gate hardening (write token by default)" \
+  uv run pytest -q tests/test_regression_gate_workflow.py
+
+fresh
+sed -i 's/return max(marked/return min(marked/' "$tmp/w/scripts/sticky_comment.py"
+expect_fail "sticky comment (updates the oldest instead of the newest)" \
+  uv run pytest -q tests/test_sticky_comment.py
 exit $failed
