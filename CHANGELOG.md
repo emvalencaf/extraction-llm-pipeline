@@ -9,6 +9,10 @@ heading when `development` is released to `master`.
 
 ### Added
 
+- `make demo`: brings the token-free stack up, sends a sample invoice, prints the result JSON and
+  tears the stack down (`scripts/demo.py`).
+- `scripts/gate_report.py` (`make gate-report`) renders the README gate report from
+  `data/baseline.json`; `--check` fails when it is stale.
 - `docs/adr/`: 15 ADRs for the decisions of #7-#26 (architecture, input, anonymization,
   failure routing, prompts, split, gate, environments, Terraform, API security, local
   stack, observability, deploy, secrets).
