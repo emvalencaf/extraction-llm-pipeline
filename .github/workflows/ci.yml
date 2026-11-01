@@ -4,8 +4,16 @@ on:
   pull_request:
     branches: [development, master]
 
+# Public-repo hardening: read-only token, no `secrets.*` anywhere in this file (fork PRs get
+# none), `pull_request` (never `pull_request_target`) so fork code never runs with write
+# access, third-party actions pinned to a commit SHA. The compose tests run against
+# fake-gemini, so no Gemini key is needed.
 permissions:
   contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   pr-target:
@@ -22,8 +30,8 @@ jobs:
     name: Unicode, ruff, wiki
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
       - name: Unicode
         run: git ls-files -z | xargs -0 uv run scripts/check_unicode.py
       - name: Ruff lint
@@ -37,11 +45,11 @@ jobs:
           fi
 
   tests:
-    name: Tests
+    name: Unit tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
       - run: uv run pytest
 
   failure-injection:
@@ -49,8 +57,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
       - name: Run the 11 scenarios on the local stack
         run: make test-compose
 
@@ -58,15 +66,63 @@ jobs:
     name: Import layers
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
       - run: uv run lint-imports
+
+  terraform:
+    name: Terraform validate
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dir: [infra, infra/bootstrap]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: "1.10.5"
+      - name: Format
+        run: terraform -chdir=${{ matrix.dir }} fmt -check -recursive
+      - name: Init without a backend
+        run: terraform -chdir=${{ matrix.dir }} init -backend=false -input=false
+      - name: Validate
+        run: terraform -chdir=${{ matrix.dir }} validate
+
+  actionlint:
+    name: actionlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Lint workflows
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
+
+  seeded-violations:
+    name: Seeded violations
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: "1.10.5"
+      - name: Make actionlint available (same pinned image as the actionlint job)
+        run: |
+          mkdir -p "$HOME/bin"
+          cat > "$HOME/bin/actionlint" <<'SHIM'
+          #!/bin/sh
+          exec docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 "$@"
+          SHIM
+          chmod +x "$HOME/bin/actionlint"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+      - name: Each check fails on a seeded violation
+        run: scripts/ci_seeded_violations.sh
 
   commits:
     name: Commit messages
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
       - name: Validate commit format

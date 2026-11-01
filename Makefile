@@ -1,7 +1,7 @@
 # `docker compose` (v2 plugin) when present, else the standalone docker-compose.
 COMPOSE := $(shell docker compose version >/dev/null 2>&1 && echo "docker compose" || echo docker-compose)
 
-.PHONY: gate gate-baseline stack-up stack-wait stack-down stack-logs stack-smoke \
+.PHONY: insights-report gate gate-baseline stack-up stack-wait stack-down stack-logs stack-smoke \
 	stack-lifecycle redrive test test-compose demo-resilience
 
 stack-up: ## Start the token-free local stack in the background (API on :8080)
@@ -37,6 +37,9 @@ test-compose: ## Failure-injection suite (11 scenarios) on a fresh local stack, 
 demo-resilience: ## Watch the stack survive injected failures (starts it if needed)
 	$(MAKE) stack-up
 	uv run python scripts/demo_resilience.py
+
+insights-report: ## Markdown report of the deployed stack from CloudWatch Logs Insights (AWS credentials)
+	uv run scripts/insights_report.py --output insights-report.md
 
 gate: ## Regression gate on the Test Set (live Gemini; needs GATE_GEMINI_API_KEY)
 	uv run scripts/regression_gate.py

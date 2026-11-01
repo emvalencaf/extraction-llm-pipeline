@@ -201,12 +201,29 @@ fully destroy it. `infra/locals.tf` holds the logical names the local `init` als
 
 ```bash
 export BUCKET_SUFFIX=<your-account-id>      # makes the S3 names yours
+export ALERT_EMAIL=<you@example.com>        # alarms and budget; confirm the SNS email once
+export GEMINI_API_KEY=<key>                       # written to SSM after apply; without it every job fails
 scripts/deploy-infra.sh bootstrap           # state bucket + infra/backend.hcl, once
 scripts/deploy-infra.sh up                  # ECR, build and push the image, everything else
 aws ssm put-parameter --overwrite --type SecureString \
   --name "$(terraform -chdir=infra output -raw gemini_parameter_name)" --value <gemini-key>
 scripts/deploy-infra.sh down                # destroy the stack, then the state bucket
 ```
+
+The `observability` module adds 8 CloudWatch alarms, a dashboard, one SNS `alerts` topic
+with an email subscription and a USD 10 budget filtered by the `Project` tag. Each alarm has
+an entry in the [runbook](docs/runbook.md).
+
+Run `scripts/wizard-post-merge-setup.sh` for all the manual steps in order (gate secrets, branch-protection check, `ALERT_EMAIL`; SNS confirmation and Billing tag only after a deploy). Two of them have no Terraform home (`scripts/wizard-gemini-key.sh` also walks through both):
+
+- **Billing tag.** In the AWS Billing console, open Cost allocation tags and activate the
+  user-defined `Project` tag, once per account and after the first deploy. Until then the
+  budget sees no costs; activation takes up to 24 hours.
+- **Regression-gate secrets.** In the GitHub repository settings add the Actions secrets
+  `GATE_GEMINI_API_KEY` (a Google project key of its own, not the runtime one),
+  `KAGGLE_USERNAME` and `KAGGLE_KEY`, and the Actions variable `GATE_KAGGLE_DATASET`
+  (`owner/slug` of the invoice dataset). Without them the
+  [regression gate](.github/workflows/regression-gate.yml) fails; fork PRs never get them.
 
 The API key is created by Terraform (read it with `aws apigateway get-api-key --api-key
 <api_key_id> --include-value`) and rotated with
@@ -216,6 +233,16 @@ The shared Lambda image measures 947 MB on disk (about 357 MB compressed). Cold 
 about 6.1 s for the first invoke under the Lambda runtime interface emulator and 10-80 ms
 warm. These are local docker numbers, not measured on Lambda; details in
 [infra/README.md](infra/README.md).
+
+### Pipeline report (CloudWatch Logs Insights)
+
+`make insights-report` runs 12 Logs Insights queries through boto3 against the API and
+worker log groups of the deployed stack and writes `insights-report.md`: jobs by outcome,
+duration percentiles, failure reasons, model calls and tokens, repairs and fallbacks,
+Grounding Rate, throughput per hour, slowest jobs, Lambda duration, memory and cold starts,
+and timeouts. It needs AWS credentials; options are `--hours` (default 24), `--prefix` and
+`--output`, e.g. `uv run scripts/insights_report.py --hours 168`. The queries read only the
+`job` and `llm_call` wide events, which hold no invoice content, so the report can be shared.
 
 ### Status line budget
 

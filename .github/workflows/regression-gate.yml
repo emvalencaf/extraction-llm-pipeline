@@ -1,0 +1,113 @@
+name: Regression gate
+
+# Runs the real graph on the Test Set and compares with data/baseline.json (see
+# scripts/regression_gate.py). Only extraction-affecting paths trigger it, so unrelated PRs
+# do not spend free-tier quota: the pipeline layers the graph runs through, the Prompt
+# Bundle and its few-shots, the Test Set split, the baseline, the gate script itself, the
+# locked dependencies and this workflow. Entrypoints, infra, docs and tests do not.
+# A path-filtered workflow that does not start reports no check at all, so branch
+# protection must not list "Regression gate" as a required check; it is a reviewer signal.
+on:
+  pull_request:
+    branches: [development, master]
+    paths:
+      - src/invoice_extraction/domain/**
+      - src/invoice_extraction/application/**
+      - src/invoice_extraction/composition/**
+      - src/invoice_extraction/prompts/**
+      - src/invoice_extraction/adapters/**
+      - scripts/regression_gate.py
+      - scripts/sticky_comment.py
+      - data/split_manifest.json
+      - data/baseline.json
+      - pyproject.toml
+      - uv.lock
+      - .github/workflows/regression-gate.yml
+
+# Public-repo hardening, as in ci.yml: `pull_request` (never `pull_request_target`), so PR
+# code never runs with write access to the base repo, and a read-only token by default.
+# The Gemini key of the gate's own Google project exists only in the `gate` job, and only
+# for PRs from this repository; fork PRs get no secrets, so they fail safe (`fork-guard`).
+# Only the `comment` job can write, and only pull-request comments.
+permissions:
+  contents: read
+
+# One run per PR; a newer push cancels the older one so it stops spending quota.
+concurrency:
+  group: regression-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  REPORT: gate-report.md
+
+jobs:
+  fork-guard:
+    name: Fork guard
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.head.repo.full_name != github.repository
+    steps:
+      - name: Fail safe on fork PRs
+        run: |
+          echo "::error::The regression gate needs a secret that fork PRs never receive. A maintainer must push this change to a branch in the repository so the gate can run."
+          exit 1
+
+  gate:
+    name: Gate on the Test Set
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+      - name: Download the Kaggle invoices (git-ignored fixture)
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+          DATASET: ${{ vars.GATE_KAGGLE_DATASET }}
+        run: |
+          if [ -z "$DATASET" ]; then
+            echo "::error::repository variable GATE_KAGGLE_DATASET (owner/slug of the invoice dataset) is not set"
+            exit 1
+          fi
+          uvx kaggle datasets download "$DATASET" --path data/kaggle --unzip
+      - name: Run the gate
+        # Exit 0 pass; 1 regression, floor or inconclusive; 2 usage error or no baseline.
+        # Any non-zero code fails the check, and the report is still published below.
+        env:
+          GATE_GEMINI_API_KEY: ${{ secrets.GATE_GEMINI_API_KEY }}
+        run: uv run scripts/regression_gate.py --report "$REPORT"
+      - name: Publish the report in the job summary
+        if: always()
+        run: |
+          if [ -s "$REPORT" ]; then cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: Keep the report for the comment job
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: gate-report
+          path: gate-report.md
+          if-no-files-found: ignore
+
+  comment:
+    name: Sticky PR comment
+    runs-on: ubuntu-latest
+    needs: gate
+    # Also after a failed gate (that is when the comment matters most), but not when the
+    # gate was skipped (fork PR) or cancelled by a newer push.
+    if: ${{ !cancelled() && needs.gate.result != 'skipped' }}
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        continue-on-error: true # a crashed gate may have written no report
+        with:
+          name: gate-report
+      - name: Post or update the comment
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: python3 scripts/sticky_comment.py --repo "$REPO" --pr "$PR" --report "$REPORT" --run-url "$RUN_URL"

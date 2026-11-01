@@ -6,8 +6,10 @@
 #   scripts/deploy-infra.sh plan        plan only (the image must already be pushed for IMAGE_TAG)
 #   scripts/deploy-infra.sh down        destroy the stack, then the state bucket
 #
-# Needs: AWS credentials in the environment, terraform >= 1.10, docker (for `up`).
+# Needs: AWS credentials in the environment, terraform >= 1.10, docker with buildx (for `up`).
 # Variables: BUCKET_SUFFIX (required, makes the S3 names yours, e.g. your account id),
+#            ALERT_EMAIL (required, receives alarms and budget notices),
+#            GEMINI_API_KEY (optional, written to SSM after apply; without it jobs fail),
 #            IMAGE_TAG (default: current commit SHA), AWS_REGION (default us-east-1).
 set -euo pipefail
 
@@ -21,7 +23,8 @@ INFRA=infra
 BOOTSTRAP=infra/bootstrap
 
 tf_main() { "$TF" -chdir="$INFRA" "$@"; }
-vars=(-var "bucket_suffix=$BUCKET_SUFFIX" -var "image_tag=$IMAGE_TAG")
+: "${ALERT_EMAIL:?set ALERT_EMAIL, the address that receives alarm and budget notifications}"
+vars=(-var "bucket_suffix=$BUCKET_SUFFIX" -var "image_tag=$IMAGE_TAG" -var "alert_email=$ALERT_EMAIL")
 
 bootstrap() {
   "$TF" -chdir="$BOOTSTRAP" init -input=false
@@ -42,9 +45,27 @@ push_image() {
   repo="$(tf_main output -raw ecr_repository_url)"
   registry="${repo%%/*}"
   aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$registry"
-  # --provenance=false keeps a single-manifest image, which Lambda requires.
-  docker build --provenance=false -f docker/lambda.Dockerfile -t "$repo:$IMAGE_TAG" .
-  docker push "$repo:$IMAGE_TAG"
+  docker buildx version >/dev/null 2>&1 || {
+    echo "docker buildx is required (apt: docker-buildx with Ubuntu docker.io, docker-buildx-plugin with Docker's own repo)" >&2; exit 1; }
+  # Lambda needs a single-manifest image (--provenance=false) for its default x86_64 arch.
+  docker buildx build --platform linux/amd64 --provenance=false --push \
+    -f docker/lambda.Dockerfile -t "$repo:$IMAGE_TAG" .
+}
+
+# Terraform only creates the SSM parameter (with a placeholder) so the key never enters the state.
+# With GEMINI_API_KEY set it is written here; the value goes through a pipe, not argv.
+put_gemini_key() {
+  local name
+  name="$(tf_main output -raw gemini_parameter_name)"
+  if [[ -z "${GEMINI_API_KEY:-}" ]]; then
+    echo "WARNING: the Gemini key is still the placeholder, so every job will fail." >&2
+    echo "Export GEMINI_API_KEY and re-run 'up', or: aws ssm put-parameter --overwrite" \
+      "--type SecureString --name $name --value <key>" >&2
+    return 0
+  fi
+  printf %s "$GEMINI_API_KEY" | aws ssm put-parameter --region "$REGION" --overwrite \
+    --type SecureString --name "$name" --value file:///dev/stdin >/dev/null
+  echo "Gemini key written to $name"
 }
 
 case "${1:-}" in
@@ -57,8 +78,7 @@ case "${1:-}" in
     tf_main apply -input=false -auto-approve -target=module.registry "${vars[@]}"
     push_image
     tf_main apply -input=false -auto-approve "${vars[@]}"
-    echo "Set the Gemini key: aws ssm put-parameter --overwrite --type SecureString" \
-      "--name \"\$(terraform -chdir=$INFRA output -raw gemini_parameter_name)\" --value <key>"
+    put_gemini_key
     ;;
   plan)
     init_main

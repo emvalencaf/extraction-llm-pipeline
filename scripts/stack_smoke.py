@@ -2,7 +2,10 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Happy path against the running local stack: create job, presigned PUT, fetch result."""
+"""Happy path against a running stack: create job, presigned PUT, fetch result.
+
+Local by default. For a deployed stack set API_URL, API_KEY and optionally SMOKE_TIMEOUT_S.
+"""
 
 import json
 import os
@@ -10,7 +13,7 @@ import sys
 import time
 import urllib.request
 
-API = "http://localhost:8080"
+API = os.environ.get("API_URL", "http://localhost:8080").rstrip("/")
 
 
 def call(url: str, method: str = "GET", data: bytes | None = None) -> bytes:
@@ -53,7 +56,7 @@ def main() -> int:
     print("created", job["job_id"], job["status"])
     call(job["upload_url"], "PUT", minimal_pdf())
     print("uploaded")
-    for _ in range(60):
+    for _ in range(int(os.environ.get("SMOKE_TIMEOUT_S", "60"))):
         body = json.loads(call(f"{API}/jobs/{job['job_id']}"))
         if body["status"] not in {"awaiting_upload", "queued", "processing"}:
             print(json.dumps(body, indent=2))

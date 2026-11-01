@@ -22,7 +22,7 @@ locals {
   bucket_name = "${local.prefix}-${local.names.bucket}-${var.bucket_suffix}"
 
   # Worker: visibility timeout is at least 6x the Lambda timeout (AWS guidance for SQS triggers).
-  worker_timeout_seconds = 120
+  worker_timeout_seconds = 900 # the Lambda maximum: a slow job may use all of it
   visibility_timeout     = 6 * local.worker_timeout_seconds
   max_receives           = 5
   upload_ttl_seconds     = 900 # presigned PUT expires after 15 minutes

@@ -39,7 +39,7 @@ resource "aws_sqs_queue" "jobs" {
   })
 }
 
-# Native DLQ redrive (scripts/redrive) needs the DLQ to name the jobs queue as its source.
+# Native DLQ redrive (`make redrive`, entrypoints/redrive) needs the DLQ to name the jobs queue as its source.
 resource "aws_sqs_queue_redrive_allow_policy" "dlq" {
   queue_url = aws_sqs_queue.dlq.id
 
@@ -85,6 +85,14 @@ output "jobs_queue_arn" {
 
 output "jobs_queue_url" {
   value = aws_sqs_queue.jobs.url
+}
+
+output "jobs_queue_name" {
+  value = aws_sqs_queue.jobs.name
+}
+
+output "dlq_name" {
+  value = aws_sqs_queue.dlq.name
 }
 
 output "dlq_arn" {
