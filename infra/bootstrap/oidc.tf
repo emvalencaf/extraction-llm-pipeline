@@ -7,6 +7,16 @@ variable "github_repo" {
   default     = "emvalencaf/extraction-llm-pipeline"
 }
 
+variable "github_sub_prefix" {
+  description = <<-EOT
+    Prefix of the OIDC `sub` claim. Repositories with immutable subjects (GitHub's default for
+    new ones) use repo:owner@ownerid/name@repoid; deploy-infra.sh reads it from
+    `gh api repos/OWNER/NAME/actions/oidc/customization/sub`. Null means repo:<github_repo>.
+  EOT
+  type        = string
+  default     = null
+}
+
 variable "create_oidc_provider" {
   description = "Set false when the account already has the GitHub OIDC provider (one per account)."
   type        = bool
@@ -35,6 +45,7 @@ data "aws_iam_openid_connect_provider" "github" {
 locals {
   oidc_provider_arn = var.create_oidc_provider ? aws_iam_openid_connect_provider.github[0].arn : data.aws_iam_openid_connect_provider.github[0].arn
   oidc_host         = "token.actions.githubusercontent.com"
+  sub_prefix        = coalesce(var.github_sub_prefix, "repo:${var.github_repo}")
   plan_role_name    = "invoice-extraction-prod-gha-plan"
   deploy_role_name  = "invoice-extraction-prod-gha-deploy"
 }
@@ -59,7 +70,7 @@ data "aws_iam_policy_document" "plan_trust" {
     condition {
       test     = "StringEquals"
       variable = "${local.oidc_host}:sub"
-      values   = ["repo:${var.github_repo}:pull_request"]
+      values   = ["${local.sub_prefix}:pull_request"]
     }
   }
 }
@@ -95,7 +106,7 @@ data "aws_iam_policy_document" "deploy_trust" {
     condition {
       test     = "StringEquals"
       variable = "${local.oidc_host}:sub"
-      values   = ["repo:${var.github_repo}:environment:${var.deploy_environment}"]
+      values   = ["${local.sub_prefix}:environment:${var.deploy_environment}"]
     }
 
     condition {
