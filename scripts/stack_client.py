@@ -243,6 +243,8 @@ def worker_events(job_id):
             continue
         if record.get("job_id") == job_id:
             events.append(record)
+    # `compose logs` prints one worker's lines after the other's, so order by emit time.
+    events.sort(key=lambda e: e.get("_aws", {}).get("Timestamp", 0))
     return events
 
 
