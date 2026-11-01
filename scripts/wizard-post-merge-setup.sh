@@ -199,7 +199,7 @@ finish() {
 
 run_wizard() {
 
-TOTAL_STAGES=5
+TOTAL_STAGES=6
 
 banner "Manual setup for the observability module and the CI and regression-gate workflows"
 
@@ -252,21 +252,35 @@ ask ALERT_EMAIL "Email that receives alarms and budget notices:"
 write_env ALERT_EMAIL "$ALERT_EMAIL"
 note "Run the deploy with: set -a; source .env; set +a; scripts/deploy-infra.sh"
 
-stage "First deploy and SNS subscription"
-say "Deploy the stack now (outside this wizard), then confirm the subscription."
-step "Run scripts/deploy-infra.sh with ALERT_EMAIL exported."
-step "Open the inbox of ALERT_EMAIL and click 'Confirm subscription' in the"
-step "AWS Notifications email (check spam). Alarms stay silent until you do."
-pause "Deployed and subscription confirmed (or skipping for now)? Press Enter."
+stage "Is the stack deployed on AWS?"
+say "The SNS confirmation and the Billing tag only make sense after a deploy."
+say "Nothing is deployed until you run scripts/deploy-infra.sh yourself (the"
+say "automated deploy workflow is ticket #40 and does not exist yet)."
+if confirm "Is the stack already deployed in your AWS account?"; then
+  DEPLOYED=1
+else
+  DEPLOYED=0
+  TOTAL_STAGES=4  # the two post-deploy stages are skipped
+  note "Later: set -a; source .env; set +a; scripts/deploy-infra.sh"
+  note "Then re-run this wizard and answer yes here."
+  SKIPPED+=("SNS subscription confirmation and Billing tag activation (no deploy yet)")
+fi
 
-stage "AWS Billing: activate the Project cost allocation tag"
-say "The USD 10 budget filters on the Project tag, which only counts once activated."
-say "Terraform cannot do this. Do it once per AWS account, after the first deploy."
-open_url "https://us-east-1.console.aws.amazon.com/billing/home#/tags"
-step "Open 'Cost allocation tags' > 'User-defined cost allocation tags'."
-step "Select the tag key 'Project' (it appears after tagged resources exist) and click Activate."
-note "Activation can take up to 24 hours to show in Cost Explorer and the budget."
-pause "Done (or skipping for now)? Press Enter."
+if [[ "$DEPLOYED" == "1" ]]; then
+  stage "Confirm the SNS subscription"
+  say "Open the inbox of ALERT_EMAIL and click 'Confirm subscription' in the"
+  say "AWS Notifications email (check spam). Alarms stay silent until you do."
+  pause "Confirmed (or skipping for now)? Press Enter."
+
+  stage "AWS Billing: activate the Project cost allocation tag"
+  say "The USD 10 budget filters on the Project tag, which only counts once activated."
+  say "Terraform cannot do this. Do it once per AWS account."
+  open_url "https://us-east-1.console.aws.amazon.com/billing/home#/tags"
+  step "Open 'Cost allocation tags' > 'User-defined cost allocation tags'."
+  step "Select the tag key 'Project' (it appears after tagged resources exist) and click Activate."
+  note "Activation can take up to 24 hours to show in Cost Explorer and the budget."
+  pause "Done (or skipping for now)? Press Enter."
+fi
 
 finish
 }

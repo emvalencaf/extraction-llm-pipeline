@@ -9,7 +9,7 @@ heading when `development` is released to `master`.
 
 ### Added
 - `scripts/wizard-post-merge-setup.sh`: resumable wizard for the manual setup of the observability
-  and gate work (gate secrets, branch-protection check, `ALERT_EMAIL`, SNS confirmation, Billing tag).
+  and gate work (gate secrets, branch-protection check, `ALERT_EMAIL`; SNS confirmation and Billing tag only after a deploy).
 
 - Manual setup with no Terraform home is documented in the README and in
   `scripts/wizard-gemini-key.sh`: activating the `Project` cost allocation tag in Billing, and

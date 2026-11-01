@@ -213,7 +213,7 @@ The `observability` module adds 8 CloudWatch alarms, a dashboard, one SNS `alert
 with an email subscription and a USD 10 budget filtered by the `Project` tag. Each alarm has
 an entry in the [runbook](docs/runbook.md).
 
-Run `scripts/wizard-post-merge-setup.sh` for all the manual steps in order (gate secrets, branch-protection check, `ALERT_EMAIL`, SNS confirmation, Billing tag). Two of them have no Terraform home (`scripts/wizard-gemini-key.sh` also walks through both):
+Run `scripts/wizard-post-merge-setup.sh` for all the manual steps in order (gate secrets, branch-protection check, `ALERT_EMAIL`; SNS confirmation and Billing tag only after a deploy). Two of them have no Terraform home (`scripts/wizard-gemini-key.sh` also walks through both):
 
 - **Billing tag.** In the AWS Billing console, open Cost allocation tags and activate the
   user-defined `Project` tag, once per account and after the first deploy. Until then the
