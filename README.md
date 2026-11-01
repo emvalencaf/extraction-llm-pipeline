@@ -75,7 +75,7 @@ sessions and tokens go.
 | Path | Purpose |
 |---|---|
 | `.agents/skills/` | Agent skills (source of truth). `.claude/skills/` symlinks to it. |
-| `.wiki/` | [OKF](.agents/skills/wiki-okf/references/SPEC.md) knowledge bundle. Query it with `/wiki-okf-query`; publish it with `scripts/publish_wiki.sh`. |
+| `.wiki/` | [OKF](.agents/skills/wiki-okf/references/SPEC.md) knowledge bundle. Query it with `/wiki-okf-query`; publish it to the GitHub Wiki with `scripts/publish_wiki.sh --push`. |
 | `docs/adr/` | Architecture decision records. |
 | `AGENTS.md`, `CLAUDE.md` | Instructions loaded by coding agents. |
 | `CONTRIBUTING.md` | Branch strategy and commit convention. |
