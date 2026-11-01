@@ -28,7 +28,13 @@ from invoice_extraction.composition.container import build_extract_invoice
 from invoice_extraction.composition.queues import jobs_queue_url
 from invoice_extraction.domain.status import UPLOAD_TTL_SECONDS, RetryPolicy
 
-_PATH_STYLE = Config(s3={"addressing_style": "path"})
+# SigV4 explicitly: botocore may otherwise sign presigned PUTs with legacy SigV2 against the
+# global endpoint, which S3 rejects (SignatureDoesNotMatch) for a role's temporary credentials.
+_S3_CONFIG = Config(signature_version="s3v4", s3={"addressing_style": "path"})
+
+
+def s3_client(endpoint_url: str | None = None):
+    return boto3.client("s3", endpoint_url=endpoint_url, config=_S3_CONFIG)
 
 
 def resolve_gemini_key(ssm=None) -> str | None:
@@ -82,15 +88,11 @@ def build_llm_retry_policy() -> LlmRetryPolicy:
 
 
 def _job_service(extract) -> JobService:
-    s3 = boto3.client("s3", config=_PATH_STYLE)
+    s3 = s3_client()
     # Optional: only the local stack needs presigned URLs on a host (localhost) other than the
     # one the containers use; on AWS both are the same endpoint.
     public_endpoint = os.environ.get("S3_PUBLIC_ENDPOINT_URL")
-    presigner = (
-        boto3.client("s3", endpoint_url=public_endpoint, config=_PATH_STYLE)
-        if public_endpoint
-        else None
-    )
+    presigner = s3_client(public_endpoint) if public_endpoint else None
     return JobService(
         jobs=DynamoJobRepository(boto3.resource("dynamodb").Table(os.environ["JOBS_TABLE"])),
         blobs=S3BlobStore(s3, os.environ["BUCKET"], presign_client=presigner),

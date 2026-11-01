@@ -51,3 +51,17 @@ def test_the_worker_handler_wires_its_service_once_across_invocations(monkeypatc
     worker_handler.handler({}, None)
 
     assert len(built) == 1
+
+
+def test_the_s3_client_signs_presigned_urls_with_sigv4(aws_env, monkeypatch):
+    """Legacy SigV2 URLs are rejected by S3 when signed with a Lambda role's temporary keys."""
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "AKIDEXAMPLE")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "secret")
+    monkeypatch.setenv("AWS_SESSION_TOKEN", "token")
+
+    url = runtime.s3_client().generate_presigned_url(
+        "put_object", Params={"Bucket": "bucket", "Key": "uploads/a.pdf"}, ExpiresIn=900
+    )
+
+    assert "X-Amz-Signature=" in url
+    assert "AWSAccessKeyId=" not in url
