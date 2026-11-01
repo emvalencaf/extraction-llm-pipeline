@@ -11,7 +11,7 @@ heading when `development` is released to `master`.
 
 - Regression-gate workflow (#39): `.github/workflows/regression-gate.yml` runs
   `scripts/regression_gate.py` only when extraction-affecting paths change (domain,
-  application, composition, Prompt Bundle, scoring/model adapters, Test Set split, baseline,
+  application, composition, Prompt Bundle, adapters, Test Set split, baseline,
   gate script, locked dependencies). It uses the gate's own Google project key
   (`GATE_GEMINI_API_KEY`), downloads the Kaggle fixture (secrets `KAGGLE_USERNAME` and
   `KAGGLE_KEY`, variable `GATE_KAGGLE_DATASET`), and fails the check on a regression, the

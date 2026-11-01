@@ -38,8 +38,11 @@ def test_secrets_only_reach_the_gate_job_and_fork_prs_fail_safe():
 def test_path_filter_lists_what_the_gate_depends_on_and_existing_paths_only():
     paths = re.findall(r"^      - (\S+)$", TEXT.split("permissions:")[0], re.M)
     assert "src/invoice_extraction/prompts/**" in paths
+    assert "src/invoice_extraction/adapters/**" in paths
     assert "data/baseline.json" in paths
     assert "scripts/regression_gate.py" in paths
+    for excluded in ("entrypoints", "infra", "docs", "tests"):
+        assert not any(excluded in p.split("/")[:3] for p in paths), excluded
     for path in paths:
         assert list(ROOT.glob(path)), f"{path} matches nothing"
 
