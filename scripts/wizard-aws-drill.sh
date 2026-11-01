@@ -242,17 +242,16 @@ RESULT_ALARMS="?"; RESULT_DLQ="no"; RESULT_REDRIVE="no"
 banner "AWS drill: alarms, poison message and redrive (docs/aws-drill.md)"
 
 stage "Preflight"
-say "Checks credentials, reads the queues from Terraform and refuses to start on a"
+say "Checks credentials, finds the queues by name and refuses to start on a"
 say "dirty DLQ (a purge at the end would destroy real failed jobs)."
 command -v aws >/dev/null || { warn "aws CLI not found"; exit 1; }
-command -v terraform >/dev/null || { warn "terraform not found"; exit 1; }
-[[ -f infra/main.tf ]] || { warn "run this from the repository root"; exit 1; }
 aws sts get-caller-identity --query Arn --output text || { warn "no valid AWS credentials in this shell"; exit 1; }
 export AWS_REGION="${AWS_REGION:-${AWS_DEFAULT_REGION:-us-east-1}}"
 export AWS_DEFAULT_REGION="$AWS_REGION"
 PREFIX="${PREFIX:-invoice-extraction-prod}"
-JOBS_URL=$(terraform -chdir=infra output -raw jobs_queue_url)
-DLQ_URL=$(terraform -chdir=infra output -raw dlq_url)
+JOBS_URL=$(aws sqs get-queue-url --queue-name "$PREFIX-jobs" --query QueueUrl --output text) \
+  || { warn "queue $PREFIX-jobs not found: wrong PREFIX/region, or the stack is not deployed"; exit 1; }
+DLQ_URL=$(aws sqs get-queue-url --queue-name "$PREFIX-jobs-dlq" --query QueueUrl --output text)
 export JOBS_QUEUE_NAME="${JOBS_URL##*/}" DLQ_NAME="${DLQ_URL##*/}"
 say "region=$AWS_REGION prefix=$PREFIX"
 say "jobs queue=$JOBS_QUEUE_NAME  dlq=$DLQ_NAME"
@@ -336,16 +335,10 @@ say "Jobs queue visibility timeout: $(queue_count "$JOBS_URL" VisibilityTimeout)
 aws cloudwatch describe-alarms --alarm-name-prefix "$PREFIX" \
   --query 'MetricAlarms[].[AlarmName,StateValue]' --output table
 note "Alarms return to OK/INSUFFICIENT_DATA on their next evaluation (up to 5 min)."
-say "terraform plan (expects no changes):"
-set +e
-terraform -chdir=infra plan -detailed-exitcode -input=false >/dev/null 2>&1
-rc=$?
-set -e
-case $rc in
-  0) say "✓ no changes" ;;
-  2) warn "terraform shows drift; check the visibility timeout and re-run the plan" ;;
-  *) warn "terraform plan failed; run it by hand" ;;
-esac
+if [[ "$(queue_count "$JOBS_URL" VisibilityTimeout)" != "$ORIGINAL_VT" ]]; then
+  warn "the visibility timeout differs from the original: aws sqs set-queue-attributes --queue-url $JOBS_URL --attributes VisibilityTimeout=$ORIGINAL_VT"
+fi
+note "Optional: scripts/deploy-infra.sh plan shows no drift on the queue (needs BUCKET_SUFFIX, ALERT_EMAIL, IMAGE_TAG of the deployed commit)."
 
 COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "?")
 finish

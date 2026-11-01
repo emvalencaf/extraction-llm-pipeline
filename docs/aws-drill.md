@@ -135,7 +135,7 @@ aws sqs purge-queue --queue-url "$DLQ_URL"
 ## 5. Clean up
 
 - [ ] The jobs queue visibility timeout is back to its original value.
-- [ ] `terraform -chdir=infra plan` shows no changes.
+- [ ] the jobs queue visibility timeout matches the original (the wizard checks; `scripts/deploy-infra.sh plan` also shows no drift).
 - [ ] All alarms are in `OK` or `INSUFFICIENT_DATA`.
 
 ## Outcome
