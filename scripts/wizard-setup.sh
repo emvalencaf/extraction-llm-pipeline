@@ -265,10 +265,7 @@ if begin bootstrap "Bootstrap: state bucket and GitHub OIDC roles"; then
   say "Applies infra/bootstrap with local state: the state bucket, the GitHub OIDC"
   say "provider and the plan and deploy roles. Safe to repeat; it only adds what is missing."
   aws_ready
-  say "An AWS account holds one GitHub OIDC provider; a second apply would fail."
-  if confirm "Does this account already have the token.actions.githubusercontent.com provider?"; then
-    export TF_VAR_create_oidc_provider=false
-  fi
+  note "The OIDC provider is detected from the state and the account; nothing to answer."
   if confirm "Run scripts/deploy-infra.sh bootstrap now?"; then
     BUCKET_SUFFIX="$BUCKET_SUFFIX" ALERT_EMAIL="$ALERT_EMAIL" AWS_REGION="${AWS_REGION:-us-east-1}" \
       scripts/deploy-infra.sh bootstrap

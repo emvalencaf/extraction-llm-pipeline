@@ -38,9 +38,26 @@ oidc_sub_prefix() {
   return 0
 }
 
+# One GitHub OIDC provider fits an account. If this bootstrap state owns it, keep managing it
+# (answering "it exists" must never make Terraform destroy it); if another stack owns it, reuse
+# it; if there is none, create it. TF_VAR_create_oidc_provider overrides the choice.
+oidc_provider_mode() {
+  [[ -n "${TF_VAR_create_oidc_provider:-}" ]] && return 0
+  if "$TF" -chdir="$BOOTSTRAP" state list 2>/dev/null | grep -q '^aws_iam_openid_connect_provider\.github'; then
+    export TF_VAR_create_oidc_provider=true
+  elif aws iam list-open-id-connect-providers --query 'OpenIDConnectProviderList[].Arn' --output text \
+    | grep -q 'oidc-provider/token.actions.githubusercontent.com'; then
+    export TF_VAR_create_oidc_provider=false
+  else
+    export TF_VAR_create_oidc_provider=true
+  fi
+  return 0
+}
+
 bootstrap() {
   oidc_sub_prefix
   "$TF" -chdir="$BOOTSTRAP" init -input=false
+  oidc_provider_mode
   "$TF" -chdir="$BOOTSTRAP" apply -input=false -auto-approve \
     -var "bucket_suffix=$BUCKET_SUFFIX" -var "region=$REGION"
   state_bucket="$("$TF" -chdir="$BOOTSTRAP" output -raw state_bucket)"

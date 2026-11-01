@@ -16,6 +16,10 @@ heading when `development` is released to `master`.
 - The deploy smoke test accepts `failed_validation` (`SMOKE_ACCEPT_VALIDATION_FAILURE=1`): its
   one-line PDF makes the real model invent a seller and client, which validation rightly rejects.
   Locally the smoke test still requires `succeeded`.
+- `scripts/deploy-infra.sh bootstrap` decides by itself whether to create the GitHub OIDC
+  provider (keep it when its own state owns it, reuse another stack's, else create it).
+  `wizard-setup.sh` used to ask, and answering "it exists" on a re-run made Terraform destroy
+  the provider and broke every role.
 
 ## [0.3.1] - 2026-11-01
 
