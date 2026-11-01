@@ -7,6 +7,8 @@ heading when `development` is released to `master`.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-01
+
 ### Added
 
 - `scripts/wizard-setup.sh`: resumable wizard (finished stages kept in the git-ignored
