@@ -109,9 +109,10 @@ jobs:
       - name: Make actionlint available (same pinned image as the actionlint job)
         run: |
           mkdir -p "$HOME/bin"
-          printf '%s\n' '#!/bin/sh' \
-            'exec docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 "$@"' \
-            > "$HOME/bin/actionlint"
+          cat > "$HOME/bin/actionlint" <<'SHIM'
+          #!/bin/sh
+          exec docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 "$@"
+          SHIM
           chmod +x "$HOME/bin/actionlint"
           echo "$HOME/bin" >> "$GITHUB_PATH"
       - name: Each check fails on a seeded violation
