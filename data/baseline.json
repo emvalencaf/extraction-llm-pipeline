@@ -1,0 +1,32 @@
+{
+  "documents": 20,
+  "all_correct": 20,
+  "floor": 0.9,
+  "max_regression": 1,
+  "prompt_version": "954eaa0965a3e7d0",
+  "field_scores": {
+    "client.address": 1.0,
+    "client.name": 1.0,
+    "client.tax_id": 1.0,
+    "currency": 1.0,
+    "invoice_no": 1.0,
+    "issue_date": 1.0,
+    "items.description": 1.0,
+    "items.gross_amount": 1.0,
+    "items.list_f1": 1.0,
+    "items.list_precision": 1.0,
+    "items.list_recall": 1.0,
+    "items.net_amount": 1.0,
+    "items.quantity": 1.0,
+    "items.unit": 1.0,
+    "items.unit_price": 1.0,
+    "items.vat_pct": 1.0,
+    "seller.address": 1.0,
+    "seller.name": 1.0,
+    "seller.tax_id": 1.0,
+    "totals.gross_amount": 1.0,
+    "totals.net_amount": 1.0,
+    "totals.vat_amount": 1.0,
+    "totals.vat_pct": 1.0
+  }
+}
