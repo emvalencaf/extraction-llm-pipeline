@@ -8,6 +8,7 @@
 #
 # Needs: AWS credentials in the environment, terraform >= 1.10, docker (for `up`).
 # Variables: BUCKET_SUFFIX (required, makes the S3 names yours, e.g. your account id),
+#            ALERT_EMAIL (required, receives alarms and budget notices),
 #            IMAGE_TAG (default: current commit SHA), AWS_REGION (default us-east-1).
 set -euo pipefail
 
@@ -21,7 +22,8 @@ INFRA=infra
 BOOTSTRAP=infra/bootstrap
 
 tf_main() { "$TF" -chdir="$INFRA" "$@"; }
-vars=(-var "bucket_suffix=$BUCKET_SUFFIX" -var "image_tag=$IMAGE_TAG")
+: "${ALERT_EMAIL:?set ALERT_EMAIL, the address that receives alarm and budget notifications}"
+vars=(-var "bucket_suffix=$BUCKET_SUFFIX" -var "image_tag=$IMAGE_TAG" -var "alert_email=$ALERT_EMAIL")
 
 bootstrap() {
   "$TF" -chdir="$BOOTSTRAP" init -input=false

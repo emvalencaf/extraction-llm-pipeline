@@ -87,6 +87,14 @@ output "jobs_queue_url" {
   value = aws_sqs_queue.jobs.url
 }
 
+output "jobs_queue_name" {
+  value = aws_sqs_queue.jobs.name
+}
+
+output "dlq_name" {
+  value = aws_sqs_queue.dlq.name
+}
+
 output "dlq_arn" {
   value = aws_sqs_queue.dlq.arn
 }

@@ -51,6 +51,22 @@ module "worker" {
   gemini_parameter_arn  = module.secrets.gemini_parameter_arn
 }
 
+module "observability" {
+  source = "./modules/observability"
+
+  prefix                 = local.prefix
+  alert_email            = var.alert_email
+  region                 = var.region
+  worker_function_name   = module.worker.function_name
+  api_function_name      = module.api.function_name
+  jobs_queue_name        = module.queue.jobs_queue_name
+  dlq_name               = module.queue.dlq_name
+  worker_timeout_seconds = local.worker_timeout_seconds
+  budget_usd             = var.budget_usd
+  budget_tag_key         = "Project"
+  budget_tag_value       = local.common_tags.Project
+}
+
 module "api" {
   source = "./modules/api"
 

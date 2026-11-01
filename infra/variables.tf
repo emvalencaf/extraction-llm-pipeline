@@ -19,6 +19,18 @@ variable "image_tag" {
   type        = string
 }
 
+# Observability (spec #27, decisions #22 and #36).
+variable "alert_email" {
+  description = "Address that receives alarm and budget notifications; confirm the SNS email once."
+  type        = string
+}
+
+variable "budget_usd" {
+  description = "Monthly USD budget for resources tagged Project=invoice-extraction."
+  type        = number
+  default     = 10
+}
+
 # Usage plan (spec #27, decision #26).
 variable "rate_limit" {
   description = "Steady-state requests per second for POST /jobs."

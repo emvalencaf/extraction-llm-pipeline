@@ -48,6 +48,14 @@ heading when `development` is released to `master`.
 
 ### Added
 
+- Observability module (#37): `infra/modules/observability` with 8 alarms (`job-failed`,
+  `llm-call-errors`, `job-duration-high`, `grounding-rate-low` on the EMF metrics;
+  `dlq-not-empty`, `queue-age-high`, `worker-errors`, `api-errors` on SQS and Lambda), a
+  dashboard, a single SNS `alerts` topic with an email subscription and a USD 10 budget
+  filtered by the `Project` tag, wired in `infra/main.tf`. `alert_email` is a new required
+  variable (`ALERT_EMAIL` for `scripts/deploy-infra.sh`). `docs/runbook.md` has one entry per
+  alarm; a test checks that the metric names match what the app emits and that every alarm
+  has a runbook entry.
 - Failure-injection suite and `make demo-resilience` (#34): the 11 scenarios of #23 run as
   compose tests (`make test-compose`, marker `compose`) driven only by `fake-gemini` and
   environment variables. `fake-gemini` gains `POST/DELETE /control/scenario` (modes `error`,
