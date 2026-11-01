@@ -198,6 +198,7 @@ finish() {
 
 ALARMS=(job-failed llm-call-errors job-duration-high grounding-rate-low
         dlq-not-empty queue-age-high worker-errors api-errors)
+export AWS_PAGER=""   # no (END) pager from the aws CLI
 ORIGINAL_VT=""   # jobs queue visibility timeout before the drill
 VT_CHANGED=0
 
