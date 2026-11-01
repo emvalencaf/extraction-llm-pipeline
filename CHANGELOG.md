@@ -7,6 +7,13 @@ heading when `development` is released to `master`.
 
 ## [Unreleased]
 
+### Fixed
+
+- `scripts/deploy-infra.sh bootstrap` decides by itself whether to create the GitHub OIDC
+  provider (keep it when its own state owns it, reuse another stack's, else create it).
+  `wizard-setup.sh` used to ask, and answering "it exists" on a re-run made Terraform destroy
+  the provider and broke every role.
+
 ## [0.3.1] - 2026-11-01
 
 ### Fixed
