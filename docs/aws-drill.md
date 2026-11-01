@@ -144,4 +144,4 @@ Fill this in after you run the drill, one row per run.
 
 | Date | Run by | Commit | Alarms emailed (of 8) | Poison reached the DLQ | Redrive | Notes |
 |---|---|---|---|---|---|---|
-| _pending_ | | | | | | |
+| 2026-11-01 | Edson Mota Valença Filho | 3a6a2ba | 8 of 8 | yes | ok | Run with `scripts/wizard-aws-drill.sh`. |
