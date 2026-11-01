@@ -202,6 +202,7 @@ fully destroy it. `infra/locals.tf` holds the logical names the local `init` als
 ```bash
 export BUCKET_SUFFIX=<your-account-id>      # makes the S3 names yours
 export ALERT_EMAIL=<you@example.com>        # alarms and budget; confirm the SNS email once
+export GEMINI_API_KEY=<key>                       # written to SSM after apply; without it every job fails
 scripts/deploy-infra.sh bootstrap           # state bucket + infra/backend.hcl, once
 scripts/deploy-infra.sh up                  # ECR, build and push the image, everything else
 aws ssm put-parameter --overwrite --type SecureString \
