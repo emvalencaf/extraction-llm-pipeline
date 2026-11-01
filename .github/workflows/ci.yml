@@ -96,6 +96,27 @@ jobs:
       - name: Lint workflows
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
 
+  seeded-violations:
+    name: Seeded violations
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: "1.10.5"
+      - name: Make actionlint available (same pinned image as the actionlint job)
+        run: |
+          mkdir -p "$HOME/bin"
+          printf '%s\n' '#!/bin/sh' \
+            'exec docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 "$@"' \
+            > "$HOME/bin/actionlint"
+          chmod +x "$HOME/bin/actionlint"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+      - name: Each check fails on a seeded violation
+        run: scripts/ci_seeded_violations.sh
+
   commits:
     name: Commit messages
     runs-on: ubuntu-latest

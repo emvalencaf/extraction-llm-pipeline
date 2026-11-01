@@ -23,7 +23,7 @@ heading when `development` is released to `master`.
   and `actionlint` jobs next to ruff, unit tests, import-linter and the compose-stack tests
   (fake-gemini only, no Gemini key). Public-repo hardening: read-only `contents` permission,
   no secrets in the workflow (fork PRs get none), `pull_request` trigger only, actions pinned
-  to commit SHAs, concurrency cancel. `scripts/ci_seeded_violations.sh` proves each check
+  to commit SHAs, concurrency cancel. A `seeded-violations` job runs `scripts/ci_seeded_violations.sh`, which proves each check
   fails on a seeded violation.
 - Observability module (#37): `infra/modules/observability` with 8 alarms (`job-failed`,
   `llm-call-errors`, `job-duration-high`, `grounding-rate-low` on the EMF metrics;
