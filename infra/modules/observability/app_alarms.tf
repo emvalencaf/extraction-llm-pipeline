@@ -4,9 +4,9 @@
 
 resource "aws_cloudwatch_metric_alarm" "job_failed" {
   alarm_name          = "${var.prefix}-job-failed"
-  alarm_description   = "A job ended failed or failed_validation. Runbook: docs/runbook.md#job-failed"
+  alarm_description   = "A job failed on infrastructure (status failed), not a bad document. Runbook: docs/runbook.md#job-failed"
   namespace           = "InvoiceExtraction"
-  metric_name         = "JobFailed"
+  metric_name         = "JobInfraFailed"
   statistic           = "Sum"
   period              = 300
   evaluation_periods  = 1

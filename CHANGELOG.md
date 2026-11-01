@@ -117,6 +117,9 @@ heading when `development` is released to `master`.
 
 ### Fixed
 
+- The `job-failed` alarm watches the new `JobInfraFailed` metric (outcomes other than
+  `succeeded` and `failed_validation`), so a bad PDF no longer pages; `JobFailed` stays on the
+  dashboard.
 - The local poller deleted the message when a Lambda invoke came back as a function error
   (for example a timeout): it now leaves it for redelivery, as the real event source mapping
   does.

@@ -22,15 +22,17 @@ fields @timestamp, event, job_id, outcome, reason, model
 
 ## `job-failed`
 
-- **Fires when:** `JobFailed` sums above 0 in 5 minutes. A job ended
-  `failed_validation` or `failed`.
-- **Check:** the `job` events with `outcome` other than `succeeded`; `reason`
-  tells which business rule or error stopped it (oversized PDF, schema
-  validation, retries exhausted).
-- **Act:** a single `failed_validation` or size rejection is a bad document:
-  nothing to fix. Several in a row after a deploy point to a prompt or schema
-  regression: revert the change and run the regression gate. `retries_exhausted`
-  means infrastructure trouble: see `dlq-not-empty` and `llm-call-errors`.
+- **Fires when:** `JobInfraFailed` sums above 0 in 5 minutes. A job ended
+  `failed`, `unavailable` or `error`: an infrastructure or model outage, not a
+  bad document. A `failed_validation` does not page; it counts in `JobFailed`
+  on the dashboard only.
+- **Check:** the `job` events with `outcome` other than `succeeded` and
+  `failed_validation`; `reason` tells which error stopped it (retries
+  exhausted, model unavailable).
+- **Act:** `retries_exhausted` and `unavailable` mean infrastructure or Gemini
+  trouble: see `dlq-not-empty` and `llm-call-errors`. For a burst of
+  `failed_validation` after a deploy (visible on the dashboard), suspect a
+  prompt or schema regression: revert the change and run the regression gate.
 
 ## `llm-call-errors`
 
