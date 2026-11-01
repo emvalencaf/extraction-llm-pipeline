@@ -201,12 +201,17 @@ fully destroy it. `infra/locals.tf` holds the logical names the local `init` als
 
 ```bash
 export BUCKET_SUFFIX=<your-account-id>      # makes the S3 names yours
+export ALERT_EMAIL=<you@example.com>        # alarms and budget; confirm the SNS email once
 scripts/deploy-infra.sh bootstrap           # state bucket + infra/backend.hcl, once
 scripts/deploy-infra.sh up                  # ECR, build and push the image, everything else
 aws ssm put-parameter --overwrite --type SecureString \
   --name "$(terraform -chdir=infra output -raw gemini_parameter_name)" --value <gemini-key>
 scripts/deploy-infra.sh down                # destroy the stack, then the state bucket
 ```
+
+The `observability` module adds 8 CloudWatch alarms, a dashboard, one SNS `alerts` topic
+with an email subscription and a USD 10 budget filtered by the `Project` tag. Each alarm has
+an entry in the [runbook](docs/runbook.md).
 
 The API key is created by Terraform (read it with `aws apigateway get-api-key --api-key
 <api_key_id> --include-value`) and rotated with

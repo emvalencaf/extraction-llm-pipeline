@@ -33,6 +33,15 @@ output "gemini_parameter_name" {
   value       = module.secrets.gemini_parameter_name
 }
 
+output "alerts_topic_arn" {
+  description = "SNS topic every alarm and the budget publish to."
+  value       = module.observability.alerts_topic_arn
+}
+
+output "dashboard_name" {
+  value = module.observability.dashboard_name
+}
+
 output "worker_function_name" {
   value = module.worker.function_name
 }
