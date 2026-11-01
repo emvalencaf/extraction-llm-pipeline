@@ -225,7 +225,7 @@ Run `scripts/wizard-post-merge-setup.sh` for all the manual steps in order (gate
   (`owner/slug` of the invoice dataset). Without them the
   [regression gate](.github/workflows/regression-gate.yml) fails; fork PRs never get them.
 
-**CI/CD deploy.** [`deploy.yml`](.github/workflows/deploy.yml) plans on PRs with a read-only
+**CI/CD deploy.** Run `scripts/wizard-setup.sh` to do all the setup below in order; it resumes after an interruption. [`deploy.yml`](.github/workflows/deploy.yml) plans on PRs with a read-only
 role; on master it runs the regression gate, waits for approval of the `production`
 Environment, applies and smoke-tests the real endpoint. After `scripts/deploy-infra.sh
 bootstrap` (it also creates the OIDC roles), set the repository variables `AWS_PLAN_ROLE_ARN`,
