@@ -48,6 +48,12 @@ heading when `development` is released to `master`.
 
 ### Added
 
+- `ci` workflow (#38): adds `terraform fmt`/`validate` (root and bootstrap stacks, no backend)
+  and `actionlint` jobs next to ruff, unit tests, import-linter and the compose-stack tests
+  (fake-gemini only, no Gemini key). Public-repo hardening: read-only `contents` permission,
+  no secrets in the workflow (fork PRs get none), `pull_request` trigger only, actions pinned
+  to commit SHAs, concurrency cancel. `scripts/ci_seeded_violations.sh` proves each check
+  fails on a seeded violation.
 - Failure-injection suite and `make demo-resilience` (#34): the 11 scenarios of #23 run as
   compose tests (`make test-compose`, marker `compose`) driven only by `fake-gemini` and
   environment variables. `fake-gemini` gains `POST/DELETE /control/scenario` (modes `error`,
