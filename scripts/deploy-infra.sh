@@ -44,8 +44,11 @@ push_image() {
   repo="$(tf_main output -raw ecr_repository_url)"
   registry="${repo%%/*}"
   aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$registry"
-  # --provenance=false keeps a single-manifest image, which Lambda requires.
-  docker build --provenance=false -f docker/lambda.Dockerfile -t "$repo:$IMAGE_TAG" .
+  # Lambda needs a single-manifest image. BuildKit adds a provenance manifest unless told
+  # not to; the legacy builder (no buildx) never does and rejects the flag.
+  build_flags=()
+  if docker buildx version >/dev/null 2>&1; then build_flags+=(--provenance=false); fi
+  docker build ${build_flags[@]+"${build_flags[@]}"} -f docker/lambda.Dockerfile -t "$repo:$IMAGE_TAG" .
   docker push "$repo:$IMAGE_TAG"
 }
 
