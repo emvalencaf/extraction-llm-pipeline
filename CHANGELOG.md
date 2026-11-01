@@ -7,6 +7,12 @@ heading when `development` is released to `master`.
 
 ## [Unreleased]
 
+### Fixed
+
+- The OIDC roles in `infra/bootstrap` trusted the plain `repo:owner/name` subject, which never
+  matches repositories with immutable subjects. `github_sub_prefix` now carries the exact prefix
+  and `scripts/deploy-infra.sh bootstrap` reads it from GitHub.
+
 ## [0.3.0] - 2026-11-01
 
 ### Added

@@ -26,7 +26,20 @@ tf_main() { "$TF" -chdir="$INFRA" "$@"; }
 : "${ALERT_EMAIL:?set ALERT_EMAIL, the address that receives alarm and budget notifications}"
 vars=(-var "bucket_suffix=$BUCKET_SUFFIX" -var "image_tag=$IMAGE_TAG" -var "alert_email=$ALERT_EMAIL")
 
+# Repositories with immutable OIDC subjects put owner and repo ids in the `sub` claim; the
+# roles must trust that exact prefix, so read it from GitHub instead of guessing.
+oidc_sub_prefix() {
+  [[ -n "${TF_VAR_github_sub_prefix:-}" ]] && return 0
+  command -v gh >/dev/null 2>&1 || return 0
+  local prefix
+  prefix="$(gh api "repos/$(gh repo view --json nameWithOwner -q .nameWithOwner)/actions/oidc/customization/sub" \
+    -q '.sub_claim_prefix // empty' 2>/dev/null || true)"
+  [[ -n "$prefix" ]] && export TF_VAR_github_sub_prefix="$prefix"
+  return 0
+}
+
 bootstrap() {
+  oidc_sub_prefix
   "$TF" -chdir="$BOOTSTRAP" init -input=false
   "$TF" -chdir="$BOOTSTRAP" apply -input=false -auto-approve \
     -var "bucket_suffix=$BUCKET_SUFFIX" -var "region=$REGION"
