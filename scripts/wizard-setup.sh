@@ -296,13 +296,25 @@ if begin environment "GitHub Environment: production"; then
     uid=$(gh api user -q .id)
     say "Reviewer: $(gh api user -q .login) (you), on $repo"
     if confirm "Create or update the production Environment now?"; then
-      printf '{"reviewers":[{"type":"User","id":%s}],"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}' "$uid" |
-        gh api -X PUT "repos/${repo}/environments/production" --input - >/dev/null
+      policy='"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}'
+      reviewers=ok
+      printf '{"reviewers":[{"type":"User","id":%s}],%s}' "$uid" "$policy" |
+        gh api -X PUT "repos/${repo}/environments/production" --input - >/dev/null || reviewers=missing
+      if [[ "$reviewers" == missing ]]; then
+        # Private repos on a free plan cannot have required reviewers (HTTP 422).
+        warn "required reviewers are not available for this repository on its plan."
+        printf '{%s}' "$policy" | gh api -X PUT "repos/${repo}/environments/production" --input - >/dev/null
+        SKIPPED+=("production has NO approval gate: make the repo public or upgrade the plan, then re-run this wizard")
+      fi
       # 422 when the master policy already exists: fine on a re-run.
       gh api -X POST "repos/${repo}/environments/production/deployment-branch-policies" \
         -f name=master -f type=branch >/dev/null 2>&1 || true
-      say "✓ production: required reviewer set, deployments limited to master"
-      mark_done environment
+      if [[ "$reviewers" == ok ]]; then
+        say "✓ production: required reviewer set, deployments limited to master"
+        mark_done environment
+      else
+        say "production: deployments limited to master, but nobody has to approve them"
+      fi
     else
       SKIPPED+=("Environment production: required reviewers and master as the only deployment branch")
     fi
