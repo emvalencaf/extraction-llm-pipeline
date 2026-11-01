@@ -39,3 +39,6 @@ infra/*.auto.tfvars
 infra/terraform.tfvars
 gate-report.md
 insights-report.md
+
+# Published wiki output
+site/
