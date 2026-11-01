@@ -5,12 +5,16 @@
 """Happy path against a running stack: create job, presigned PUT, fetch result.
 
 Local by default. For a deployed stack set API_URL, API_KEY and optionally SMOKE_TIMEOUT_S.
+Set SMOKE_ACCEPT_VALIDATION_FAILURE=1 against the real model: the one-line PDF below makes it
+invent a seller and client, so the output is rejected as `failed_validation`. That still proves
+upload, queue, worker, model call and validation all ran; extraction quality is the gate's job.
 """
 
 import json
 import os
 import sys
 import time
+import urllib.error
 import urllib.request
 
 API = os.environ.get("API_URL", "http://localhost:8080").rstrip("/")
@@ -23,6 +27,19 @@ def call(url: str, method: str = "GET", data: bytes | None = None) -> bytes:
     request = urllib.request.Request(url, data=data, headers=headers, method=method)
     with urllib.request.urlopen(request, timeout=30) as response:
         return response.read()
+
+
+def create_job() -> dict:
+    """POST /jobs, retrying 403: a fresh API key takes a while to reach its usage plan."""
+    deadline = time.monotonic() + int(os.environ.get("SMOKE_TIMEOUT_S", "60"))
+    while True:
+        try:
+            return json.loads(call(f"{API}/jobs", "POST"))
+        except urllib.error.HTTPError as error:
+            if error.code != 403 or time.monotonic() >= deadline:
+                raise
+            print("403 from the API (key not propagated yet?), retrying in 5 s")
+            time.sleep(5)
 
 
 def minimal_pdf() -> bytes:
@@ -52,7 +69,7 @@ def minimal_pdf() -> bytes:
 
 
 def main() -> int:
-    job = json.loads(call(f"{API}/jobs", "POST"))
+    job = create_job()
     print("created", job["job_id"], job["status"])
     call(job["upload_url"], "PUT", minimal_pdf())
     print("uploaded")
@@ -60,7 +77,10 @@ def main() -> int:
         body = json.loads(call(f"{API}/jobs/{job['job_id']}"))
         if body["status"] not in {"awaiting_upload", "queued", "processing"}:
             print(json.dumps(body, indent=2))
-            return 0 if body["status"] == "succeeded" else 1
+            accepted = {"succeeded"}
+            if os.environ.get("SMOKE_ACCEPT_VALIDATION_FAILURE") == "1":
+                accepted.add("failed_validation")
+            return 0 if body["status"] in accepted else 1
         time.sleep(1)
     print("timed out waiting for the job")
     return 1
