@@ -8,6 +8,10 @@ for real.
 Run it once after the first deploy and again after any change to the
 `observability` or `queue` modules. Record the outcome in [Outcome](#outcome).
 
+The steps below can be run by hand, or in one go with
+`scripts/wizard-aws-drill.sh` (it asks you only for what a human must check: the
+SNS subscription and the number of emails received).
+
 ## Prerequisites
 
 - The stack is up (`scripts/deploy-infra.sh up`, or the `deploy` workflow) and the
