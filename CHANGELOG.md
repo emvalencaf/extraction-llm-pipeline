@@ -7,6 +7,29 @@ heading when `development` is released to `master`.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-01
+
+### Added
+
+- `docs/aws-drill.md`: human-run drill for the deployed stack (fire the 8 alarms, send a poison
+  message to the DLQ, redrive, clean up) with an outcome table to fill in (#49).
+  `scripts/wizard-aws-drill.sh` runs it end to end (refuses a dirty DLQ, restores the queue's
+  visibility timeout even on Ctrl-C, prints the Outcome row).
+- README rewritten for the extraction pipeline (it was the harness template) with four diagrams in
+  `docs/diagrams/` (AWS architecture, job flow, extraction graph, CI/CD) built by
+  `docs/diagrams/build.py` from the AWS Architecture Icons and Font Awesome Free (#48, #63).
+- `make demo`: brings the token-free stack up, sends a sample invoice, prints the result JSON and
+  tears the stack down (`scripts/demo.py`).
+- `scripts/gate_report.py` (`make gate-report`) renders the README gate report from
+  `data/baseline.json`; `--check` fails when it is stale.
+- `docs/adr/`: 15 ADRs for the decisions of #7-#26 (architecture, input, anonymization,
+  failure routing, prompts, split, gate, environments, Terraform, API security, local
+  stack, observability, deploy, secrets).
+- `scripts/publish_wiki.sh`: validates `.wiki/` with `wiki-okf-validate --strict`, renders
+  it to `site/wiki/index.html` and flattens it into GitHub Wiki pages
+  (`scripts/okf_to_github_wiki.py`); `--push` syncs them to the repository's GitHub Wiki.
+- `.wiki/`: pipeline, runbook and one concept per ADR.
+
 ## [0.3.2] - 2026-11-01
 
 ### Fixed

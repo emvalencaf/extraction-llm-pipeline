@@ -2,7 +2,7 @@
 COMPOSE := $(shell docker compose version >/dev/null 2>&1 && echo "docker compose" || echo docker-compose)
 
 .PHONY: insights-report gate gate-baseline stack-up stack-wait stack-down stack-logs stack-smoke \
-	stack-lifecycle redrive test test-compose demo-resilience
+	stack-lifecycle redrive test test-compose demo demo-resilience gate-report
 
 stack-up: ## Start the token-free local stack in the background (API on :8080)
 	$(COMPOSE) up --build -d
@@ -33,6 +33,16 @@ test-compose: ## Failure-injection suite (11 scenarios) on a fresh local stack, 
 	uv run pytest tests/compose -m compose; status=$$?; \
 		[ $$status -eq 0 ] || $(COMPOSE) logs --no-color --tail=150; \
 		$(MAKE) stack-down; exit $$status
+
+demo: ## End-to-end demo, no credentials: stack up, one sample invoice, print the JSON, stack down
+	$(MAKE) stack-up
+	$(MAKE) stack-wait
+	uv run python scripts/demo.py; status=$$?; \
+		[ $$status -eq 0 ] || $(COMPOSE) logs --no-color --tail=100; \
+		$(MAKE) stack-down; exit $$status
+
+gate-report: ## Regenerate the README gate report from data/baseline.json
+	uv run python scripts/gate_report.py
 
 demo-resilience: ## Watch the stack survive injected failures (starts it if needed)
 	$(MAKE) stack-up
