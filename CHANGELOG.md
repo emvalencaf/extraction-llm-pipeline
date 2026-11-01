@@ -7,6 +7,19 @@ heading when `development` is released to `master`.
 
 ## [Unreleased]
 
+### Added
+
+- Regression-gate workflow (#39): `.github/workflows/regression-gate.yml` runs
+  `scripts/regression_gate.py` only when extraction-affecting paths change (domain,
+  application, composition, Prompt Bundle, scoring/model adapters, Test Set split, baseline,
+  gate script, locked dependencies). It uses the gate's own Google project key
+  (`GATE_GEMINI_API_KEY`), downloads the Kaggle fixture (secrets `KAGGLE_USERNAME` and
+  `KAGGLE_KEY`, variable `GATE_KAGGLE_DATASET`), and fails the check on a regression, the
+  floor or an inconclusive run. Fork PRs get no secret and fail safe; only the comment job
+  has `pull-requests: write`. `scripts/sticky_comment.py` posts the report as one sticky PR
+  comment found by its hidden marker and updated in place. `ci_seeded_violations.sh` seeds
+  workflow-hardening and sticky-logic violations.
+
 ### Fixed
 
 - The local poller deleted the message when a Lambda invoke came back as a function error
