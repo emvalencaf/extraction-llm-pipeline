@@ -45,7 +45,7 @@ push_image() {
   registry="${repo%%/*}"
   aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$registry"
   docker buildx version >/dev/null 2>&1 || {
-    echo "docker buildx is required (install the docker-buildx-plugin package)" >&2; exit 1; }
+    echo "docker buildx is required (apt: docker-buildx with Ubuntu docker.io, docker-buildx-plugin with Docker's own repo)" >&2; exit 1; }
   # Lambda needs a single-manifest image (--provenance=false) for its default x86_64 arch.
   docker buildx build --platform linux/amd64 --provenance=false --push \
     -f docker/lambda.Dockerfile -t "$repo:$IMAGE_TAG" .
